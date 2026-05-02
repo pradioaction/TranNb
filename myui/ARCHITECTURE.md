@@ -3,7 +3,7 @@
 
 ## 1. 项目概述
 
-翻译笔记本是一个基于 PyQt5 的桌面应用程序，用于管理和翻译文本内容，支持 Markdown 编辑、AI 翻译（通过 Ollama 本地模型）、工作区管理和文本导入功能。此外，还包含完整的单词背诵和学习系统。
+翻译笔记本是一个基于 PyQt5 的桌面应用程序，用于管理和翻译文本内容，支持 Markdown 编辑、AI 翻译（通过 Ollama 本地模型、火山引擎方舟）、工作区管理和文本导入功能。此外，还包含完整的单词背诵和学习系统。
 
 ### 技术栈
 
@@ -12,7 +12,7 @@
 - **HTTP 请求**: httpx
 - **数据格式**: JSON
 - **Python 版本**: 3.14+
-- **其他依赖**: PyQt5-Qsci, matplotlib, numpy
+- **其他依赖**: PyQt5-Qsci, matplotlib, numpy, volcengine-python-sdk, pydantic
 
 ---
 
@@ -51,7 +51,10 @@
     │   ├── BaseTranslationProvider (翻译提供者基类)
     │   ├── OllamaTranslationProvider (Ollama翻译)
     │   ├── CustomOllamaProvider (自定义Ollama提供者)
+    │   ├── CustomArkProvider (火山引擎方舟提供者)
+    │   ├── build_custom_provider (自定义提供者工厂)
     │   ├── TranslationWorker (翻译工作线程)
+    │   ├── ModelManager (模型管理器)
     │   └── 翻译模式
     │       ├── TranslationMode (翻译模式)
     │       ├── ParseMode (解析模式)
@@ -71,7 +74,8 @@
     └── 工具层
         ├── ThemeManager (主题管理)
         ├── FileUtils (文件工具)
-        └── SizeCalculator (尺寸计算)
+        ├── SizeCalculator (尺寸计算)
+        └── MessageBoxTheme (消息框主题)
 ```
 
 ### 2.2 层次结构
@@ -81,7 +85,7 @@
 | 表现层 (UI) | 用户界面展示和交互 | MainWindow, WelcomePage, SettingsDialog, RecitationMainPage, QuizPage |
 | 业务逻辑层 | 核心业务逻辑处理 | TranslationService, CellManager, FileService, WorkspaceManager, BookService, StudyService |
 | 数据层 | 数据持久化和管理 | SettingsManager, DatabaseManager, RecitationDAL |
-| 翻译层 | 翻译能力提供 | BaseTranslationProvider, OllamaTranslationProvider, CustomOllamaProvider |
+| 翻译层 | 翻译能力提供 | BaseTranslationProvider, OllamaTranslationProvider, CustomOllamaProvider, CustomArkProvider, build_custom_provider |
 | 背诵模式层 | 单词背诵和学习管理 | Book, Word, UserStudy, BookImporter, ArticleGenerator, EbbinghausAlgorithm |
 | 工具层 | 通用工具和辅助功能 | ThemeManager, FileUtils, SizeCalculator, PathManager |
 
@@ -186,11 +190,16 @@ cells_data = [
 - 执行翻译请求
 - 管理翻译模式（解析模式、场景模式等）
 - 生成包含单词的场景文章
+- 支持热重载自定义提供者配置
+- 获取当前提供者的超时配置
 
 **核心方法**:
 - `set_settings_manager(settings_manager)`: 设置配置管理器
+- `reload_from_settings()`: 从设置热重载自定义提供者（无需重启）
 - `register_provider(provider_id, provider)`: 注册翻译提供者
+- `unregister_provider(provider_id)`: 注销翻译提供者
 - `set_current_provider(provider_id)`: 设置当前活动提供者
+- `get_translation_timeout_seconds()`: 获取当前提供者的超时配置
 - `translate(text, prompt_template)`: 执行异步翻译
 - `load_custom_providers(custom_models)`: 加载自定义模型配置
 - `generate_scene_text(words, prompt_template)`: 生成场景文章
@@ -198,6 +207,25 @@ cells_data = [
 **提供者类型**:
 - 系统提供者 (`system_*`)
 - 自定义提供者 (`custom_*`)
+
+---
+
+#### ModelManager (src/translation/model_manager.py)
+
+**职责**:
+- 管理模型的注册、更新和删除
+- 维护当前活动模型
+- 提供模型启用/禁用功能
+- 支持批量加载和导出模型
+
+**核心方法**:
+- `add_model(model_name, model_config)`: 添加新模型
+- `update_model(model_name, model_config)`: 更新模型配置
+- `delete_model(model_name)`: 删除模型
+- `enable_model(model_name)` / `disable_model(model_name)`: 启用/禁用模型
+- `set_current_model(model_name)`: 设置当前活动模型
+- `list_models()` / `list_enabled_models()`: 列出模型
+- `load_models(models_list)` / `export_models()`: 批量加载/导出模型
 
 ---
 
@@ -265,21 +293,27 @@ cells_data = [
         "current_provider": "system_Ollama",
         "ollama": {
             "base_url": "http://localhost:11434",
-            "model": "qwen2.5:0.5b",
-            "timeout": 30
+            "model": "qwen2.5:0.5b"
+        },
+        "openai": {
+            "api_key": "",
+            "base_url": "https://api.openai.com/v1",
+            "model": "gpt-3.5-turbo"
         }
     },
     "theme": "light",
     "window": { "width": 1200, "height": 800 },
     "prompt_templates": {
         "translation": "请翻译{input}",
-        "analysis": "解析{input}",
+        "analysis": "请解析{input}",
         "scenery": "请完成一篇包含{input}的文章"
     },
     "custom_models": [],
     "workspace": {
         "current_path": "",
-        "current_file": ""
+        "current_file": "",
+        "recent_files": [],
+        "cell_states": {}
     },
     "reading": { "font_size": 12 }
 }
@@ -337,6 +371,36 @@ GET /api/tags  # 获取模型列表
 **职责**:
 - 继承 OllamaTranslationProvider
 - 支持自定义配置的 Ollama 提供者
+
+---
+
+#### CustomArkProvider (src/translation/providers/ark.py)
+
+**职责**:
+- 实现基于火山引擎方舟（VolcEngine Ark）的翻译
+- 支持 OpenAI 兼容的 Chat API
+- 使用官方 Ark Runtime SDK
+- 支持从环境变量 `ARK_API_KEY` 读取 API Key
+
+**API 调用**:
+使用 `volcenginesdkarkruntime.Ark` 官方 SDK 调用 `/api/v3/chat/completions` 接口
+
+**配置项**:
+- `api_key`: API 密钥（或环境变量 `ARK_API_KEY`）
+- `endpoint`: Ark 接口地址（默认 `https://ark.cn-beijing.volces.com/api/v3`）
+- `model`: 模型 ID 或推理接入点 ID
+- `timeout`: 请求超时时间（秒）
+
+---
+
+#### build_custom_provider (src/translation/providers/custom_factory.py)
+
+**职责**:
+- 根据自定义模型配置中的 `backend` 字段，构建对应的提供者实例
+- 目前支持的后端:
+  - `ollama`: 默认，构建 `CustomOllamaProvider`
+  - `ark`: 构建 `CustomArkProvider`
+- 避免 TranslationService 内部堆积分支逻辑
 
 ---
 
@@ -461,6 +525,13 @@ theme = {
 **职责**:
 - 计算文本内容所需的精确高度
 - 支持自适应单元格高度
+
+---
+
+#### MessageBoxTheme (src/utils/message_box_theme.py)
+
+**职责**:
+- 提供消息框的主题样式
 
 ---
 
@@ -613,7 +684,7 @@ theme = {
 **ArticleGenerator**:
 - 格式化文章: 给新学单词加下划线 (`&lt;u&gt;`)，给复习单词加粗 (`**`)
 - 提取标题: 从文章第一句话自动提取标题
-- 保存文章: 按日期目录组织，保存为 `.transnb` 格式
+- 保存文章: 按日期目录组织，保存为 .transnb 格式
 - 单词汇总: 生成 Markdown 格式的单词汇总（可选）
 
 **核心方法**:
@@ -646,7 +717,7 @@ theme = {
 
 #### 工作线程 (src/recitation/workers.py)
 
-提供一系列后台工作线程，避免阻塞 UI：
+提供一系列后台工作线程，避免阻塞 UI:
 - InitializeDBWorker: 初始化数据库
 - AddBookWorker: 添加词书
 - ImportWordsWorker: 导入单词
@@ -711,9 +782,9 @@ TranslationService.translate(text, prompt_template)
     ↓
 获取当前 TranslationProvider
     ↓
-OllamaTranslationProvider.translate()
+[OllamaTranslationProvider|CustomOllamaProvider|CustomArkProvider].translate()
     ↓
-发送 HTTP 请求到 Ollama API
+发送请求到对应 API
     ↓
 接收翻译结果
     ↓
@@ -874,7 +945,7 @@ GenerateArticleWorker (后台线程)
     ↓
 TranslationService.generate_scene_text(words)
     ↓
-调用 Ollama API 生成包含单词的文章
+调用当前翻译提供者 API 生成包含单词的文章
     ↓
 ArticleGenerator.format_article()
     ↓
@@ -903,14 +974,15 @@ FileService.open_file()
 
 1. 继承 `BaseTranslationProvider`
 2. 实现 `translate()`, `test_connection()`, `get_info()` 方法
-3. 在 `TranslationService` 中注册新提供者
+3. 在 `providers/__init__.py` 中导出新类
+4. 在 `custom_factory.py` 中添加新的 `backend` 分支
+5. 在 `TranslationService` 中注册（如果是系统提供者）
 
 ### 5.2 新增单元格类型
 
 1. 继承 `BaseCell`
 2. 实现自定义 UI 和逻辑
-3. 在 `CellManager` 中添加创建方法
-4. 更新文件序列化格式
+3. 在 `CellManager` 中添加创建逻辑
 
 ### 5.3 新增主题
 
@@ -934,7 +1006,9 @@ MainWindow
 ├── TranslationService
 │   ├── OllamaTranslationProvider
 │   ├── CustomOllamaProvider
-│   └── (其他 Providers)
+│   ├── CustomArkProvider
+│   ├── build_custom_provider (工厂)
+│   └── ModelManager
 ├── WorkspaceManager
 ├── FileService
 │   └── WorkspaceManager
@@ -978,7 +1052,11 @@ myui/
 ├── settings.json                    # 配置文件
 ├── ARCHITECTURE.md                  # 架构文档（本文件）
 ├── API.md                           # API 接口文档
-├── test.transnb                     # 示例文件
+├── 单元格.md                         # 单元格文档
+├── test_ollama_api.py               # Ollama API 测试
+├── test_chat_api.py                 # Chat API 测试
+├── check_db.py                      # 数据库检查
+├── check_db2.py                     # 数据库检查 2
 └── src/
     ├── __init__.py
     ├── ui/                          # UI 层
@@ -1007,7 +1085,9 @@ myui/
     │   └── providers/               # 翻译提供者
     │       ├── __init__.py
     │       ├── base.py              # 基类
-    │       └── ollama.py            # Ollama 实现
+    │       ├── ollama.py            # Ollama 实现
+    │       ├── ark.py               # 火山引擎方舟实现
+    │       └── custom_factory.py    # 自定义提供者工厂
     ├── workspace/                   # 工作区模块
     │   ├── __init__.py
     │   ├── file_service.py          # 文件服务
@@ -1040,6 +1120,6 @@ myui/
         ├── __init__.py
         ├── file_utils.py            # 文件工具
         ├── size_calculator.py       # 尺寸计算
-        └── theme_manager.py         # 主题管理
+        ├── theme_manager.py         # 主题管理
+        └── message_box_theme.py     # 消息框主题
 ```
-

@@ -5,12 +5,14 @@
         "ollama": {
             "base_url": "http://localhost:11434",
             "model": "qwen:7b",
-            "timeout": 59
+            "timeout": 54
         },
         "openai": {
-            "api_key": "",
+            "api_key_env": "OPENAI_API_KEY",
             "base_url": "https://api.openai.com/v1",
-            "model": "gpt-3.5-turbo"
+            "model": "gpt-3.5-turbo",
+            "timeout": 72,
+            "proxy": ""
         }
     },
     "theme": "light",
@@ -27,7 +29,7 @@
         {
             "name": "doubao-seed-2-0-pro-260215",
             "backend": "ark",
-            "api_key": "ark-3fa510f0-a4c3-4fcf-aaa7-4da37003223e-348f0",
+            "api_key_env": "ARK_API_KEY",
             "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
             "model": "doubao-seed-2-0-pro-260215",
             "timeout": 60,
@@ -37,7 +39,7 @@
         {
             "name": "doubao-seed-2-0-lite-260215",
             "backend": "ark",
-            "api_key": "ark-3fa510f0-a4c3-4fcf-aaa7-4da37003223e-348f0",
+            "api_key_env": "ARK_API_KEY",
             "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
             "model": "doubao-seed-2-0-lite-260215",
             "timeout": 60,
@@ -47,10 +49,30 @@
         {
             "name": "doubao-seed-1-6-flash-250828",
             "backend": "ark",
-            "api_key": "ark-3fa510f0-a4c3-4fcf-aaa7-4da37003223e-348f0",
+            "api_key_env": "ARK_API_KEY",
             "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
             "model": "doubao-seed-1-6-flash-250828",
             "timeout": 60,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "name": "deepseek-v3-2-251201",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "deepseek-v3-2-251201",
+            "timeout": 30,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "name": "doubao-seed-2-0-mini-260215",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-2-0-mini-260215",
+            "timeout": 30,
             "proxy": "",
             "enabled": true
         }
@@ -64,6 +86,16 @@
     "reading": {
         "font_size": 12
     },
+    "env_vars": [
+        {
+            "name": "ARK_API_KEY",
+            "description": "火山方舟API密钥"
+        },
+        {
+            "name": "OPENAI_API_KEY",
+            "description": "OpenAI密钥"
+        }
+    ],
     "recitation": {
         "daily_new_words": 30,
         "daily_review_words": 50

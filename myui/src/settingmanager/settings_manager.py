@@ -30,6 +30,7 @@ class SettingsManager(QObject):
         else:
             self._settings = self._get_default_settings()
             self._save_settings()
+        self._sanitize_persistent_settings()
 
     def _merge_default_settings(self):
         default_settings = self._get_default_settings()
@@ -44,6 +45,18 @@ class SettingsManager(QObject):
                 result[key] = value
         return result
 
+    def _sanitize_persistent_settings(self) -> None:
+        """写入磁盘前不应保留明文密钥：迁移 translation.openai.api_key。"""
+        t = self._settings.get("translation")
+        if not isinstance(t, dict):
+            return
+        oa = t.get("openai")
+        if not isinstance(oa, dict):
+            return
+        if (oa.get("api_key") or "").strip() and not (oa.get("api_key_env") or "").strip():
+            oa["api_key_env"] = "OPENAI_API_KEY"
+        oa.pop("api_key", None)
+
     def _get_default_settings(self) -> Dict[str, Any]:
         return {
             "translation": {
@@ -54,9 +67,11 @@ class SettingsManager(QObject):
                     "model": "qwen2.5:0.5b"
                 },
                 "openai": {
-                    "api_key": "",
+                    "api_key_env": "",
                     "base_url": "https://api.openai.com/v1",
-                    "model": "gpt-3.5-turbo"
+                    "model": "gpt-3.5-turbo",
+                    "timeout": 60,
+                    "proxy": ""
                 }
             },
             "theme": "light",
@@ -77,7 +92,11 @@ class SettingsManager(QObject):
             },
             "reading": {
                 "font_size": 12
-            }
+            },
+            "env_vars": [
+                {"name": "ARK_API_KEY", "description": "火山方舟 API 密钥"},
+                {"name": "OPENAI_API_KEY", "description": "OpenAI API 密钥"},
+            ],
         }
 
     def _save_settings(self):
@@ -148,14 +167,38 @@ class SettingsManager(QObject):
         return self._settings.get("custom_models", [])
 
     def set_custom_models(self, models: list, auto_save: bool = True):
-        self._settings["custom_models"] = models
+        cleaned = []
+        for m in models:
+            d = dict(m)
+            backend = (d.get("backend") or "").lower()
+            if backend == "ark":
+                has_legacy = bool((d.get("api_key") or "").strip())
+                if has_legacy and not (d.get("api_key_env") or "").strip():
+                    d["api_key_env"] = "ARK_API_KEY"
+            d.pop("api_key", None)
+            cleaned.append(d)
+        self._settings["custom_models"] = cleaned
+        if auto_save:
+            self._save_settings()
+
+    def get_env_vars(self) -> list:
+        return list(self._settings.get("env_vars", []))
+
+    def set_env_vars(self, entries: list, auto_save: bool = True):
+        self._settings["env_vars"] = list(entries or [])
         if auto_save:
             self._save_settings()
 
     def add_custom_model(self, model: Dict[str, Any], auto_save: bool = True):
         if "custom_models" not in self._settings:
             self._settings["custom_models"] = []
-        self._settings["custom_models"].append(model)
+        clean = dict(model)
+        backend = (clean.get("backend") or "").lower()
+        if backend == "ark":
+            if (clean.get("api_key") or "").strip() and not (clean.get("api_key_env") or "").strip():
+                clean["api_key_env"] = "ARK_API_KEY"
+        clean.pop("api_key", None)
+        self._settings["custom_models"].append(clean)
         if auto_save:
             self._save_settings()
 
@@ -250,6 +293,26 @@ class SettingsManager(QObject):
         if "translation" not in self._settings:
             self._settings["translation"] = {}
         self._settings["translation"]["ollama"] = settings
+        if auto_save:
+            self._save_settings()
+
+    def get_openai_settings(self) -> Dict[str, Any]:
+        return self._settings.get("translation", {}).get("openai", {
+            "api_key_env": "",
+            "base_url": "https://api.openai.com/v1",
+            "model": "gpt-3.5-turbo",
+            "timeout": 60,
+            "proxy": "",
+        })
+
+    def set_openai_settings(self, settings: Dict[str, Any], auto_save: bool = True):
+        if "translation" not in self._settings:
+            self._settings["translation"] = {}
+        d = dict(settings)
+        if (d.get("api_key") or "").strip() and not (d.get("api_key_env") or "").strip():
+            d["api_key_env"] = "OPENAI_API_KEY"
+        d.pop("api_key", None)
+        self._settings["translation"]["openai"] = d
         if auto_save:
             self._save_settings()
     

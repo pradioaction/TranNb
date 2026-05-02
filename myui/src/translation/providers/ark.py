@@ -1,9 +1,9 @@
 import asyncio
 import logging
-import os
 from typing import Any, Dict
 
 from .base import BaseTranslationProvider, ProviderType
+from .api_key_resolve import resolve_ark_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,9 @@ class CustomArkProvider(BaseTranslationProvider):
             self.config["base_url"] = ep.rstrip("/")
         else:
             self.config["base_url"] = DEFAULT_ARK_BASE_URL
-        if not (self.config.get("api_key") or "").strip():
-            self.config["api_key"] = os.environ.get("ARK_API_KEY", "")
+
+    def _resolved_api_key(self) -> str:
+        return resolve_ark_api_key(self.config)
 
     def _client(self):
         try:
@@ -36,7 +37,7 @@ class CustomArkProvider(BaseTranslationProvider):
                 "未安装方舟 SDK，请执行: pip install volcengine-python-sdk"
             ) from e
         return Ark(
-            api_key=self.config["api_key"],
+            api_key=self._resolved_api_key(),
             base_url=self.config["base_url"],
         )
 
@@ -44,8 +45,16 @@ class CustomArkProvider(BaseTranslationProvider):
         model = (self.config.get("model") or "").strip()
         if not model:
             raise ValueError("未配置模型（方舟推理接入点 ID / 模型 ID）")
-        if not (self.config.get("api_key") or "").strip():
-            raise ValueError("未配置 API Key，请在自定义模型中填写或设置环境变量 ARK_API_KEY")
+        api_key = self._resolved_api_key()
+        if not api_key:
+            env_name = (self.config.get("api_key_env") or "").strip()
+            if env_name:
+                raise ValueError(
+                    f"未读取到 API Key：请在系统环境中设置变量「{env_name}」，或在设置中检查变量名"
+                )
+            raise ValueError(
+                "未配置 API Key：请在模型中填写「API 密钥环境变量名」，或保留旧版 api_key / 环境变量 ARK_API_KEY"
+            )
 
         client = self._client()
         timeout = int(self.config.get("timeout") or 120)

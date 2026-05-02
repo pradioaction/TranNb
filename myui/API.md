@@ -4,6 +4,7 @@
 ## 目录
 
 - [翻译服务 (TranslationService)](#翻译服务-translationservice)
+- [模型管理器 (ModelManager)](#模型管理器-modelmanager)
 - [单元格管理器 (CellManager)](#单元格管理器-cellmanager)
 - [文件服务 (FileService)](#文件服务-fileservice)
 - [工作区管理器 (WorkspaceManager)](#工作区管理器-workspacemanager)
@@ -29,10 +30,20 @@ class TranslationService:
 
 #### `set_settings_manager(settings_manager)`
 
-设置配置管理器并应用配置。
+设置配置管理器。
 
 **参数**:
 - `settings_manager` (SettingsManager): 配置管理器实例
+
+---
+
+#### `reload_from_settings()`
+
+从设置热重载自定义提供者（无需重启）。
+
+**参数**: 无
+
+**返回值**: 无
 
 ---
 
@@ -101,6 +112,15 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
+#### `get_translation_timeout_seconds() -&gt; int`
+
+获取当前选用模型的超时（秒）。
+
+**返回值**:
+- `int`: 超时时间（秒，范围 15-600）
+
+---
+
 #### `list_providers() -&gt; List[str]`
 
 列出所有已注册的提供者 ID。
@@ -124,7 +144,7 @@ service.register_provider("system_Ollama", ollama)
 
 #### `load_custom_providers(custom_models: List[Dict[str, Any]])`
 
-从配置加载自定义翻译提供者。
+使用热重载替换所有自定义提供者，避免配置更新后仍沿用旧实例。
 
 **参数**:
 - `custom_models` (List[Dict]): 自定义模型配置列表
@@ -138,6 +158,7 @@ service.register_provider("system_Ollama", ollama)
         "endpoint": "",
         "model": "",
         "timeout": 30,
+        "backend": "ollama",
         "enabled": true
     }
 ]
@@ -160,7 +181,7 @@ service.register_provider("system_Ollama", ollama)
 
 **参数**:
 - `text` (str): 要翻译的文本
-- `prompt_template` (str, optional): 提示词模板，包含 `{input}` 占位符
+- `prompt_template` (str, optional): 提示词模板
 - `provider_name` (str, optional): 指定使用的提供者，不指定则用当前提供者
 - `**kwargs`: 其他可选参数
 
@@ -220,6 +241,184 @@ result = await service.translate(
 #### `get_scene_mode()`
 
 获取场景模式（预留接口）。
+
+---
+
+## 模型管理器 (ModelManager)
+
+### 类定义
+
+```python
+class ModelManager:
+    def __init__(self)
+```
+
+### 方法
+
+#### `add_model(model_name: str, model_config: Dict[str, Any]) -&gt; bool`
+
+添加新模型。
+
+**参数**:
+- `model_name` (str): 模型名称
+- `model_config` (Dict[str, Any]): 模型配置
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `update_model(model_name: str, model_config: Dict[str, Any]) -&gt; bool`
+
+更新模型配置。
+
+**参数**:
+- `model_name` (str): 模型名称
+- `model_config` (Dict[str, Any]): 模型配置
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `delete_model(model_name: str) -&gt; bool`
+
+删除模型。
+
+**参数**:
+- `model_name` (str): 模型名称
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `enable_model(model_name: str) -&gt; bool`
+
+启用模型。
+
+**参数**:
+- `model_name` (str): 模型名称
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `disable_model(model_name: str) -&gt; bool`
+
+禁用模型。
+
+**参数**:
+- `model_name` (str): 模型名称
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `set_model_enabled(model_name: str, enabled: bool) -&gt; bool`
+
+设置模型启用状态。
+
+**参数**:
+- `model_name` (str): 模型名称
+- `enabled` (bool): 是否启用
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `register_model(model_name: str, model_config: Dict[str, Any])`
+
+注册模型（与 add_model 相同）。
+
+**参数**:
+- `model_name` (str): 模型名称
+- `model_config` (Dict[str, Any]): 模型配置
+
+**返回值**: 无
+
+---
+
+#### `set_current_model(model_name: str) -&gt; bool`
+
+设置当前活动模型。
+
+**参数**:
+- `model_name` (str): 模型名称
+
+**返回值**:
+- `bool`: 是否成功
+
+---
+
+#### `get_current_model() -&gt; Optional[str]`
+
+获取当前活动模型。
+
+**返回值**:
+- `str | None`: 当前模型名称或 None
+
+---
+
+#### `get_model_config(model_name: Optional[str] = None) -&gt; Optional[Dict[str, Any]]`
+
+获取模型配置。
+
+**参数**:
+- `model_name` (str, optional): 模型名称，不提供则返回当前模型配置
+
+**返回值**:
+- `Dict[str, Any] | None`: 模型配置
+
+---
+
+#### `list_models() -&gt; List[str]`
+
+列出所有模型。
+
+**返回值**:
+- `List[str]`: 模型名称列表
+
+---
+
+#### `list_enabled_models() -&gt; List[str]`
+
+列出所有启用的模型。
+
+**返回值**:
+- `List[str]`: 模型名称列表
+
+---
+
+#### `get_all_models() -&gt; Dict[str, Dict[str, Any]]`
+
+获取所有模型。
+
+**返回值**:
+- `Dict[str, Dict[str, Any]]`: 模型字典
+
+---
+
+#### `load_models(models_list: List[Dict[str, Any]])`
+
+批量加载模型。
+
+**参数**:
+- `models_list` (List[Dict[str, Any]]): 模型配置列表
+
+**返回值**: 无
+
+---
+
+#### `export_models() -&gt; List[Dict[str, Any]]`
+
+导出所有模型。
+
+**返回值**:
+- `List[Dict[str, Any]]`: 模型配置列表
 
 ---
 
@@ -849,21 +1048,40 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_file_browser_path() -&gt; str`
+#### `get_recent_files() -&gt; List[str]`
 
-获取文件浏览器路径。
+获取最近打开的文件列表。
 
 **返回值**:
-- `str`: 路径
+- `List[str]`: 文件路径列表
 
 ---
 
-#### `set_file_browser_path(path: str, auto_save: bool = True)`
+#### `set_recent_files(files: List[str], auto_save: bool = True)`
 
-设置文件浏览器路径。
+设置最近打开的文件列表。
 
 **参数**:
-- `path` (str): 路径
+- `files` (List[str]): 文件路径列表
+- `auto_save` (bool, optional): 是否自动保存
+
+---
+
+#### `get_cell_states() -&gt; Dict[str, Any]`
+
+获取单元格状态。
+
+**返回值**:
+- `Dict[str, Any]`: 状态字典
+
+---
+
+#### `set_cell_states(states: Dict[str, Any], auto_save: bool = True)`
+
+设置单元格状态。
+
+**参数**:
+- `states` (Dict[str, Any]): 状态字典
 - `auto_save` (bool, optional): 是否自动保存
 
 ---
@@ -886,6 +1104,31 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 **参数**:
 - `provider_id` (str): 提供者 ID
 - `auto_save` (bool, optional): 是否自动保存
+
+---
+
+#### `parse_provider_id(provider_id: str) -&gt; Tuple[str, str]`
+
+解析 provider_id，返回 (type, name) 元组。
+
+**参数**:
+- `provider_id` (str): 提供者 ID
+
+**返回值**:
+- `Tuple[str, str]`: (类型, 名称) 元组
+
+---
+
+#### `build_provider_id(provider_type: str, name: str) -&gt; str`
+
+构建 provider_id。
+
+**参数**:
+- `provider_type` (str): 类型（system 或 custom）
+- `name` (str): 名称
+
+**返回值**:
+- `str`: provider_id
 
 ---
 
@@ -1101,6 +1344,66 @@ class CustomOllamaProvider(OllamaTranslationProvider):
 
 ---
 
+### CustomArkProvider
+
+#### 类定义
+
+```python
+class CustomArkProvider(BaseTranslationProvider):
+    def __init__(self, name: str, config: Dict[str, Any])
+```
+
+火山引擎方舟：使用官方 Ark Runtime（OpenAI 兼容 Chat）。
+
+#### 默认配置
+
+```python
+{
+    "base_url": "https://ark.cn-beijing.volces.com/api/v3",
+    "model": "",
+    "api_key": "",
+    "timeout": 120
+}
+```
+
+#### 方法
+
+##### `async translate(text: str, prompt_template: str = "", **kwargs) -&gt; str`
+
+执行翻译（实现基类抽象方法）。
+
+**API**:
+- 使用 volcenginesdkarkruntime.Ark SDK
+- 调用 Chat completions API
+
+---
+
+##### `test_connection() -&gt; bool`
+
+测试 Ark 服务连接。
+
+**返回值**:
+- `bool`: 连接是否成功
+
+---
+
+##### `get_info() -&gt; Dict[str, Any]`
+
+获取提供者信息。
+
+**返回值**:
+```python
+{
+    "name": "自定义模型名",
+    "type": "custom",
+    "backend": "ark",
+    "base_url": "...",
+    "model": "..."
+}
+```
+
+---
+
 ### ProviderType 枚举
 
 ```python
@@ -1108,6 +1411,29 @@ class ProviderType(Enum):
     SYSTEM = "system"
     CUSTOM = "custom"
 ```
+
+---
+
+### build_custom_provider (工厂函数)
+
+#### 函数定义
+
+```python
+def build_custom_provider(name: str, model: Dict[str, Any]) -&gt; BaseTranslationProvider
+```
+
+根据自定义模型配置中的 `backend` 字段，构建对应的提供者实例。
+
+**参数**:
+- `name` (str): 提供者名称
+- `model` (Dict[str, Any]): 模型配置字典
+
+**返回值**:
+- `BaseTranslationProvider`: 构建的提供者实例
+
+**支持的 backend**:
+- `ollama`: 构建 CustomOllamaProvider（默认）
+- `ark`: 构建 CustomArkProvider
 
 ---
 
@@ -1364,7 +1690,7 @@ class ThemeManager(QObject):
 设置主题。
 
 **参数**:
-- `theme_name` (str): 主题名称 (`light` 或 `dark`)
+- `theme_name` (str): 主题名称（`light` 或 `dark`）
 
 ---
 
@@ -2404,21 +2730,27 @@ class BookImporter:
         "current_provider": "system_Ollama",
         "ollama": {
             "base_url": "http://localhost:11434",
-            "model": "qwen2.5:0.5b",
-            "timeout": 30
+            "model": "qwen2.5:0.5b"
+        },
+        "openai": {
+            "api_key": "",
+            "base_url": "https://api.openai.com/v1",
+            "model": "gpt-3.5-turbo"
         }
     },
     "theme": "light",
     "window": { "width": 1200, "height": 800 },
     "prompt_templates": {
         "translation": "请翻译{input}",
-        "analysis": "解析{input}",
+        "analysis": "请解析{input}",
         "scenery": "请完成一篇包含{input}的文章"
     },
     "custom_models": [],
     "workspace": {
         "current_path": "",
-        "current_file": ""
+        "current_file": "",
+        "recent_files": [],
+        "cell_states": {}
     },
     "reading": { "font_size": 12 }
 }

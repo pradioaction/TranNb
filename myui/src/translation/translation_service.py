@@ -5,6 +5,7 @@ from .providers import (
     BaseTranslationProvider,
     ProviderType,
     OllamaTranslationProvider,
+    OpenAITranslationProvider,
     build_custom_provider,
 )
 
@@ -42,6 +43,8 @@ class TranslationService:
             return None
         if provider_id == "system_ollama":
             return self._build_provider_id("system", "Ollama")
+        if provider_id == "system_openai":
+            return self._build_provider_id("system", "OpenAI")
         return provider_id
     
     def _parse_provider_id(self, provider_id: str) -> tuple:
@@ -64,6 +67,12 @@ class TranslationService:
         ollama_provider = self.get_provider(ollama_provider_id)
         if ollama_provider:
             ollama_provider.update_config(ollama_settings)
+
+        openai_settings = self.settings_manager.get_openai_settings()
+        openai_provider_id = self._build_provider_id("system", "OpenAI")
+        openai_provider = self.get_provider(openai_provider_id)
+        if openai_provider:
+            openai_provider.update_config(openai_settings)
         
         # 若已是注册 ID（仅系统 provider 在自定义加载前有效），先对齐
         raw_current = self.settings_manager.get_current_translation_provider()
@@ -77,9 +86,14 @@ class TranslationService:
     
     def _register_system_providers(self):
         ollama_provider = OllamaTranslationProvider()
-        provider_id = self._build_provider_id("system", "Ollama")
-        self.register_provider(provider_id, ollama_provider)
-        self.current_provider_id = provider_id
+        ollama_id = self._build_provider_id("system", "Ollama")
+        self.register_provider(ollama_id, ollama_provider)
+
+        openai_provider = OpenAITranslationProvider()
+        openai_id = self._build_provider_id("system", "OpenAI")
+        self.register_provider(openai_id, openai_provider)
+
+        self.current_provider_id = ollama_id
     
     def register_provider(self, provider_id: str, provider: BaseTranslationProvider) -> bool:
         if provider_id in self.providers:

@@ -1,7 +1,7 @@
 from .models import Book, Word, UserStudy
 from .path_manager import PathManager
 from .database import DatabaseManager
-from .dal import RecitationDAL
+from .recitation_dal import RecitationDAL
 from .book_importer import BookImporter
 from .book_service import BookService
 from .download_service import DownloadService
