@@ -345,19 +345,24 @@ class RecitationMainPage(QWidget):
     def _init_ui(self):
         """初始化UI"""
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(20)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         
         # 顶部 - 标题和返回按钮
-        top_layout = QHBoxLayout()
+        top_widget = QWidget()
+        top_widget.setMaximumHeight(40)
+        top_layout = QHBoxLayout(top_widget)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.setSpacing(10)
         
         back_btn = QPushButton("← 返回")
         back_btn.clicked.connect(self.back_requested.emit)
+        back_btn.setMaximumHeight(30)
         top_layout.addWidget(back_btn)
         
         title_label = QLabel("📚 背诵模式")
         title_font = QFont()
-        title_font.setPointSize(18)
+        title_font.setPointSize(12)
         title_font.setBold(True)
         title_label.setFont(title_font)
         top_layout.addWidget(title_label)
@@ -366,9 +371,10 @@ class RecitationMainPage(QWidget):
         
         self._db_size_label = QLabel("数据库: --")
         self._db_size_label.setStyleSheet("color: #666;")
+        self._db_size_label.setFont(QFont("Arial", 9))
         top_layout.addWidget(self._db_size_label)
         
-        layout.addLayout(top_layout)
+        layout.addWidget(top_widget)
         
         # 使用分割器划分左右两个区域
         splitter = QSplitter(Qt.Horizontal)
@@ -379,7 +385,7 @@ class RecitationMainPage(QWidget):
         
         # 词书列表标题
         book_title = QLabel("词书列表")
-        book_title.setFont(QFont("Arial", 12, QFont.Bold))
+        book_title.setFont(QFont("Arial", 10, QFont.Bold))
         left_layout.addWidget(book_title)
         
         # 按钮区域
@@ -421,7 +427,7 @@ class RecitationMainPage(QWidget):
         right_layout = QVBoxLayout(right_widget)
         
         right_title = QLabel("今日学习")
-        right_title.setFont(QFont("Arial", 12, QFont.Bold))
+        right_title.setFont(QFont("Arial", 10, QFont.Bold))
         right_layout.addWidget(right_title)
         
         self._current_book_label = QLabel("请先选择词书")
@@ -431,25 +437,51 @@ class RecitationMainPage(QWidget):
         new_group = QGroupBox("新学单词")
         new_layout = QVBoxLayout(new_group)
         
+        new_header_layout = QHBoxLayout()
         self._new_count_label = QLabel("0个")
-        new_layout.addWidget(self._new_count_label)
+        new_header_layout.addWidget(self._new_count_label)
+        
+        self._new_select_all_btn = QPushButton("全选")
+        self._new_select_all_btn.clicked.connect(lambda: self._select_all_words(self._new_list, True))
+        new_header_layout.addWidget(self._new_select_all_btn)
+        
+        self._new_deselect_all_btn = QPushButton("取消全选")
+        self._new_deselect_all_btn.clicked.connect(lambda: self._select_all_words(self._new_list, False))
+        new_header_layout.addWidget(self._new_deselect_all_btn)
+        
+        new_header_layout.addStretch()
+        new_layout.addLayout(new_header_layout)
         
         self._new_list = QListWidget()
+        self._new_list.setSelectionMode(QListWidget.MultiSelection)
         new_layout.addWidget(self._new_list)
         
-        right_layout.addWidget(new_group)
+        right_layout.addWidget(new_group, 1)  # 给新学单词列表更大的权重
         
         # 复习单词部分
         review_group = QGroupBox("复习单词")
         review_layout = QVBoxLayout(review_group)
         
+        review_header_layout = QHBoxLayout()
         self._review_count_label = QLabel("0个")
-        review_layout.addWidget(self._review_count_label)
+        review_header_layout.addWidget(self._review_count_label)
+        
+        self._review_select_all_btn = QPushButton("全选")
+        self._review_select_all_btn.clicked.connect(lambda: self._select_all_words(self._review_list, True))
+        review_header_layout.addWidget(self._review_select_all_btn)
+        
+        self._review_deselect_all_btn = QPushButton("取消全选")
+        self._review_deselect_all_btn.clicked.connect(lambda: self._select_all_words(self._review_list, False))
+        review_header_layout.addWidget(self._review_deselect_all_btn)
+        
+        review_header_layout.addStretch()
+        review_layout.addLayout(review_header_layout)
         
         self._review_list = QListWidget()
+        self._review_list.setSelectionMode(QListWidget.MultiSelection)
         review_layout.addWidget(self._review_list)
         
-        right_layout.addWidget(review_group)
+        right_layout.addWidget(review_group, 1)  # 给复习单词列表更大的权重
         
         # 底部操作按钮
         action_layout = QHBoxLayout()
@@ -468,10 +500,6 @@ class RecitationMainPage(QWidget):
         self._skip_btn.clicked.connect(self._on_skip)
         self._skip_btn.setEnabled(False)
         action_layout.addWidget(self._skip_btn)
-        
-        right_layout.addLayout(action_layout)
-        
-        right_layout.addStretch()
         
         action_layout.addStretch()
         
@@ -596,8 +624,23 @@ class RecitationMainPage(QWidget):
                 item_text += f" {formatted_phonetic}"
             self._review_list.addItem(item_text)
         
+        # 默认全选所有单词
+        self._select_all_words(self._new_list, True)
+        self._select_all_words(self._review_list, True)
+        
         self._new_count_label.setText(f"{len(self._today_new_words)}个")
         self._review_count_label.setText(f"{len(self._today_review_words)}个")
+    
+    def _select_all_words(self, list_widget, select):
+        """全选或取消全选列表中的单词"""
+        for i in range(list_widget.count()):
+            item = list_widget.item(i)
+            item.setSelected(select)
+    
+    def _get_selected_words(self, all_words, list_widget):
+        """获取选中的单词列表"""
+        selected_indices = [i for i in range(list_widget.count()) if list_widget.item(i).isSelected()]
+        return [all_words[i] for i in selected_indices if i < len(all_words)]
     
     def _load_current_book(self):
         """加载当前词书"""
@@ -735,9 +778,16 @@ class RecitationMainPage(QWidget):
         if not self._current_book:
             return
         
-        self._start_study_batch()
+        selected_new = self._get_selected_words(self._today_new_words, self._new_list)
+        selected_review = self._get_selected_words(self._today_review_words, self._review_list)
+        
+        if not selected_new and not selected_review:
+            QMessageBox.warning(self, "提示", "请至少选择一个单词！")
+            return
+        
+        self._start_study_batch(selected_new)
         self.generate_article_requested.emit(
-            self._today_new_words, self._today_review_words
+            selected_new, selected_review
         )
     
     def _on_start_quiz(self):
@@ -745,17 +795,24 @@ class RecitationMainPage(QWidget):
         if not self._current_book:
             return
         
-        self._start_study_batch()
+        selected_new = self._get_selected_words(self._today_new_words, self._new_list)
+        selected_review = self._get_selected_words(self._today_review_words, self._review_list)
+        
+        if not selected_new and not selected_review:
+            QMessageBox.warning(self, "提示", "请至少选择一个单词！")
+            return
+        
+        self._start_study_batch(selected_new)
         self.start_quiz_requested.emit(
-            self._today_new_words, self._today_review_words
+            selected_new, selected_review
         )
     
-    def _start_study_batch(self):
+    def _start_study_batch(self, selected_words):
         """批量开始学习记录"""
         if not self._current_book:
             return
         
-        word_ids = [w.id for w in self._today_new_words]
+        word_ids = [w.id for w in selected_words]
         if word_ids:
             worker = StartStudyBatchWordsWorker(
                 self._dal, self._path_manager, self._current_book.id, word_ids

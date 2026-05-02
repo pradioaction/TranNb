@@ -103,13 +103,10 @@ class StudyService:
         if count is None:
             count = self.get_daily_new_words()
         
-        unstudied_words = self.dal.get_unstudied_words(book_id)
+        # 调用 dal 方法时传递 limit 参数，让数据库层直接进行限制
+        unstudied_words = self.dal.get_unstudied_words(book_id, limit=count)
         
-        if len(unstudied_words) <= count:
-            return unstudied_words
-        
-        random.shuffle(unstudied_words)
-        return unstudied_words[:count]
+        return unstudied_words
     
     def get_review_words(self, book_id: int, count: Optional[int] = None) -> List[Word]:
         """
@@ -148,10 +145,24 @@ class StudyService:
         Returns:
             (new_words, review_words) 单词列表元组
         """
-        # 检查是否需要刷新：强制刷新 或 不是同一天 或 没有记录
         today_key = self._get_today_key(book_id)
+        daily_new = self.get_daily_new_words()
+        daily_review = self.get_daily_review_words()
         
-        if not force_refresh and self._is_same_day() and today_key in self._config:
+        # 检查是否需要刷新：强制刷新 或 不是同一天 或 没有记录 或 数量设置改变了
+        need_refresh = force_refresh or not self._is_same_day() or today_key not in self._config
+        
+        # 如果保存了记录，还要检查数量设置是否改变
+        if not need_refresh and today_key in self._config:
+            saved_data = self._config[today_key]
+            saved_new_count = len(saved_data.get('new_words', []))
+            saved_review_count = len(saved_data.get('review_words', []))
+            
+            # 如果数量设置改变了，强制刷新
+            if saved_new_count != daily_new or saved_review_count != daily_review:
+                need_refresh = True
+        
+        if not need_refresh:
             # 使用保存的记录
             saved_data = self._config[today_key]
             new_word_ids = saved_data.get('new_words', [])
@@ -166,8 +177,8 @@ class StudyService:
                 return new_words, review_words
         
         # 需要刷新：获取新单词并保存
-        new_words = self.get_study_words(book_id)
-        review_words = self.get_review_words(book_id)
+        new_words = self.get_study_words(book_id, daily_new)
+        review_words = self.get_review_words(book_id, daily_review)
         
         # 保存今日记录
         today_str = datetime.now().strftime('%Y-%m-%d')

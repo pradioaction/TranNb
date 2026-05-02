@@ -76,6 +76,7 @@ class WordDAL:
     def get_unstudied_words(self, book_id: int, limit: Optional[int] = None) -> List[Word]:
         """获取词书中未学习的单词"""
         try:
+            import random
             with self._db_manager.get_connection() as conn:
                 cursor = conn.cursor()
                 query = '''
@@ -85,13 +86,16 @@ class WordDAL:
                 '''
                 params = [book_id, book_id]
                 
-                if limit:
-                    query += ' ORDER BY w.id LIMIT ?'
-                    params.append(limit)
-                
+                # 不使用数据库的 LIMIT，而是获取所有然后随机抽取，这样更公平
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
-                return [self._row_to_word(row) for row in rows]
+                words = [self._row_to_word(row) for row in rows]
+                
+                if limit and len(words) > limit:
+                    random.shuffle(words)
+                    return words[:limit]
+                
+                return words
         except Exception as e:
             logger.error(f"获取未学习单词失败: {e}", exc_info=True)
             return []
@@ -99,6 +103,7 @@ class WordDAL:
     def get_words_for_review(self, book_id: int, limit: Optional[int] = None) -> List[Word]:
         """获取需要复习的单词"""
         try:
+            import random
             from datetime import datetime
             with self._db_manager.get_connection() as conn:
                 cursor = conn.cursor()
@@ -111,13 +116,16 @@ class WordDAL:
                 '''
                 params = [book_id, now]
                 
-                if limit:
-                    query += ' LIMIT ?'
-                    params.append(limit)
-                
+                # 获取所有待复习单词，然后随机抽取指定数量
                 cursor.execute(query, params)
                 rows = cursor.fetchall()
-                return [self._row_to_word(row) for row in rows]
+                words = [self._row_to_word(row) for row in rows]
+                
+                if limit and len(words) > limit:
+                    random.shuffle(words)
+                    return words[:limit]
+                
+                return words
         except Exception as e:
             logger.error(f"获取复习单词失败: {e}", exc_info=True)
             return []

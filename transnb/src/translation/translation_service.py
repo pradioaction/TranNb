@@ -278,10 +278,29 @@ class TranslationService:
             result = await provider.translate(words_text, prompt_template, **kwargs)
             logger.info(f"[TranslationService] 造景文章生成完成")
             
-            # 打印返回结果
+            # 只打印返回结果的第一句话
             print("\n模型返回的结果:")
             print("="*50)
-            print(result)
+            # 提取第一句话
+            first_sentence = ""
+            cleaned_result = result.strip()
+            # 查找句子结束符
+            end_positions = [
+                cleaned_result.find('.'),
+                cleaned_result.find('!'),
+                cleaned_result.find('?'),
+                cleaned_result.find('\n')
+            ]
+            # 过滤掉 -1 的位置
+            valid_positions = [pos for pos in end_positions if pos != -1]
+            if valid_positions:
+                first_sentence = cleaned_result[:min(valid_positions) + 1].strip()
+            else:
+                # 如果没有找到句子结束符，取前 200 个字符
+                first_sentence = cleaned_result[:200]
+                if len(cleaned_result) > 200:
+                    first_sentence += "..."
+            print(first_sentence)
             print("="*50)
             
             return result

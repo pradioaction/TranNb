@@ -114,6 +114,19 @@ class ArticleGenerator:
         return title
     
     @staticmethod
+    def extract_english_letters(text: str) -> str:
+        """
+        从文本中只提取英文字母
+        
+        Args:
+            text: 原始文本
+        
+        Returns:
+            只包含英文字母的文本
+        """
+        return re.sub(r'[^a-zA-Z]', '', text)
+    
+    @staticmethod
     def save_article(
         workspace_path: str,
         article_text: str,
@@ -139,11 +152,8 @@ class ArticleGenerator:
             article_dir = Path(workspace_path) / date_dir
             article_dir.mkdir(parents=True, exist_ok=True)
             
-            # 生成文件名
-            # 先清理标题中的所有非法字符
-            safe_title = title.replace('\n', ' ').replace('\r', ' ').strip()
-            # 替换所有文件名字符
-            safe_title = re.sub(r'[<>:"/\\|?*\x00-\x1F]', '_', safe_title)
+            # 生成文件名：只提取标题中的英文字母
+            safe_title = ArticleGenerator.extract_english_letters(title)
             # 限制长度
             safe_title = safe_title[:50].strip()
             if not safe_title:
@@ -163,9 +173,8 @@ class ArticleGenerator:
                     break
                 counter += 1
             
-            # 准备要保存的单元格数据
-            # 先添加标题作为第一段
-            full_content = f"# {title}\n\n{article_text}"
+            # 准备要保存的单元格数据：只保存文章本身，不添加标题
+            full_content = article_text
             
             # 按段落分割
             lines = full_content.replace('\r\n', '\n').split('\n')
