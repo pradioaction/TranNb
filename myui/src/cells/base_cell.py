@@ -1,22 +1,29 @@
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QToolButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QToolButton
 from PyQt5.QtCore import pyqtSignal as Signal, Qt
 from utils.size_calculator import SizeCalculator
 
 class BaseCell(QWidget):
     selected = Signal(object)
-    run_requested = Signal(object)
+    translate_requested = Signal(object)
     delete_requested = Signal(object)
     move_up_requested = Signal(object)
     move_down_requested = Signal(object)
-    height_changed = Signal()
     
     def __init__(self):
         super().__init__()
         self.is_selected = False
         self.theme = None
-        self.min_height = 100
-        self.max_height = 2000
+        self.min_height = 150
+        self.max_height = 3000
+        self.translation_service = None
+        self.settings_manager = None
         self.init_ui()
+        
+    def set_translation_service(self, translation_service):
+        self.translation_service = translation_service
+        
+    def set_settings_manager(self, settings_manager):
+        self.settings_manager = settings_manager
         
     def init_ui(self):
         self.main_layout = QHBoxLayout(self)
@@ -27,11 +34,11 @@ class BaseCell(QWidget):
         self.gutter_layout.setContentsMargins(5, 0, 5, 0)
         self.gutter_layout.setSpacing(2)
         
-        self.run_button = QToolButton()
-        self.run_button.setText("▶")
-        self.run_button.setFixedSize(24, 24)
-        self.run_button.clicked.connect(self.on_run_clicked)
-        self.gutter_layout.addWidget(self.run_button)
+        self.translate_button = QToolButton()
+        self.translate_button.setText("🌐")
+        self.translate_button.setFixedSize(24, 24)
+        self.translate_button.clicked.connect(self.on_translate_clicked)
+        self.gutter_layout.addWidget(self.translate_button)
         
         self.move_up_button = QToolButton()
         self.move_up_button.setText("↑")
@@ -62,8 +69,8 @@ class BaseCell(QWidget):
         
         self.set_selected(False)
         
-    def on_run_clicked(self):
-        self.run_requested.emit(self)
+    def on_translate_clicked(self):
+        self.translate_requested.emit(self)
         
     def on_delete_clicked(self):
         self.delete_requested.emit(self)
@@ -96,15 +103,7 @@ class BaseCell(QWidget):
         self.selected.emit(self)
         super().mousePressEvent(event)
         
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.adjust_height()
-        
     def adjust_height(self):
-        pass
-        
-    def set_min_height(self, height):
-        self.min_height = height
-        
-    def set_max_height(self, height):
-        self.max_height = height
+        # 基础实现，子类可以覆盖
+        self.setMinimumHeight(self.min_height)
+        self.setMaximumHeight(self.max_height)

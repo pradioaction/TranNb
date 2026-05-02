@@ -1,0 +1,124 @@
+{
+    "translation": {
+        "enabled": false,
+        "current_provider": "system_ollama",
+        "ollama": {
+            "base_url": "http://127.0.0.1:11434",
+            "model": "qwen:7b",
+            "timeout": 30
+        },
+        "openai": {
+            "api_key": "",
+            "base_url": "https://api.openai.com/v1",
+            "model": "gpt-3.5-turbo"
+        },
+        "service": "local",
+        "google": {
+            "name": "谷歌翻译",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 26,
+            "proxy": ""
+        },
+        "microsoft": {
+            "name": "微软翻译",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": ""
+        },
+        "deepl": {
+            "name": "DeepL",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": ""
+        },
+        "qwen": {
+            "name": "通义千问",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": ""
+        },
+        "ernie": {
+            "name": "文心一言",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": ""
+        },
+        "gpt": {
+            "name": "GPT",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": ""
+        },
+        "local": {
+            "name": "本地模型 API",
+            "enabled": false,
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": ""
+        }
+    },
+    "theme": "light",
+    "window": {
+        "width": 1200,
+        "height": 800
+    },
+    "prompt_templates": {
+        "translation": "请翻译{input}",
+        "analysis": "解析{input}\n根据输入文本的长度自动切换分析深度：若输入为一句话（无句号或仅有一个完整主谓结构），则进行逐词逐句的雅思式深度分析，解析重难点单词，固定搭配，句式结构，整体翻译；若输入为一段话（含≥2个完整主谓结构），则仅提供整体翻译，不做额外解析。",
+        "scenery": "Please write an text that includes {input}"
+    },
+    "custom_models": [
+        {
+            "name": "modletest",
+            "api_key": "",
+            "endpoint": "",
+            "model": "",
+            "timeout": 30,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "api_key": "",
+            "enabled": false,
+            "endpoint": "",
+            "model": "",
+            "name": "shaya",
+            "proxy": "",
+            "timeout": 30
+        }
+    ],
+    "workspace": {
+        "current_path": "C:\\Users\\Pradio\\Downloads\\test",
+        "recent_files": [],
+        "cell_states": {},
+        "current_file": "C:\\Users\\Pradio\\Downloads\\test\\260502\\In today's fast-pace....transnb",
+        "file_browser_path": "G:/program/QSDReader-All/newappsdediter/myui"
+    },
+    "reading": {
+        "font_size": 15
+    },
+    "recitation": {
+        "daily_new_words": 20,
+        "daily_review_words": 50
+    }
+}

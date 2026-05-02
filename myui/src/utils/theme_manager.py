@@ -24,7 +24,18 @@ class ThemeManager(QObject):
                 'button_hover': '#e0e0e0',
                 'status_bar': '#f0f0f0',
                 'scroll_area': '#ffffff',
-                'gutter': '#f5f5f5'
+                'gutter': '#f5f5f5',
+                'dialog_background': '#ffffff',
+                'sidebar_background': '#f3f3f3',
+                'sidebar_header': '#e8e8e8',
+                'sidebar_border': '#ddd',
+                'list_item_hover': '#e0e0e0',
+                'list_item_selected': '#007acc',
+                'primary_button': '#007acc',
+                'primary_button_hover': '#005a9e',
+                'group_box': '#fafafa',
+                'input_background': '#ffffff',
+                'input_border': '#ccc'
             },
             'dark': {
                 'background': '#1e1e1e',
@@ -43,7 +54,18 @@ class ThemeManager(QObject):
                 'button_hover': '#3d3d3d',
                 'status_bar': '#252526',
                 'scroll_area': '#1e1e1e',
-                'gutter': '#252526'
+                'gutter': '#252526',
+                'dialog_background': '#252526',
+                'sidebar_background': '#2d2d2d',
+                'sidebar_header': '#333333',
+                'sidebar_border': '#404040',
+                'list_item_hover': '#3c3c3c',
+                'list_item_selected': '#0e639c',
+                'primary_button': '#0e639c',
+                'primary_button_hover': '#1177bb',
+                'group_box': '#2d2d2d',
+                'input_background': '#3c3c3c',
+                'input_border': '#555555'
             }
         }
         

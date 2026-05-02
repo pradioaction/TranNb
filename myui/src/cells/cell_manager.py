@@ -1,24 +1,55 @@
+
 import json
 import os
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
-from cells.code_cell import CodeCell
+from PyQt5.QtCore import pyqtSignal as Signal, QObject
 from cells.markdown_cell import MarkdownCell
+from translation.translation_service import TranslationService
 
-class CellManager:
-    def __init__(self, layout: QVBoxLayout, kernel_manager):
+class CellManager(QObject):
+    content_changed = Signal()  # 内容变化信号
+    
+    def __init__(self, layout: QVBoxLayout, translation_service=None):
+        super().__init__()
         self.layout = layout
-        self.kernel_manager = kernel_manager
         self.cells = []
         self.selected_index = -1
+        self.translation_service = translation_service
+        self.settings_manager = None
+        
+    def set_settings_manager(self, settings_manager):
+        self.settings_manager = settings_manager
+        self.translation_service.set_settings_manager(settings_manager)
+        for cell in self.cells:
+            cell.set_settings_manager(settings_manager)
+        if self.settings_manager:
+            self.settings_manager.reading_font_size_changed.connect(self.on_reading_font_size_changed)
+        
+    def on_reading_font_size_changed(self, font_size):
+        print(f"[Font change] New font size: {font_size}")
+        for cell in self.cells:
+            cell.adjust_height()
+    
+    def _on_cell_content_changed(self):
+        """单元格内容变化时触发"""
+        self.content_changed.emit()
         
     def add_cell(self, cell):
         self.cells.append(cell)
         self.layout.addWidget(cell)
         cell.selected.connect(self.on_cell_selected)
-        cell.run_requested.connect(self.on_cell_run_requested)
+        cell.translate_requested.connect(self.on_cell_translate_requested)
         cell.delete_requested.connect(self.on_cell_delete_requested)
         cell.move_up_requested.connect(self.on_cell_move_up)
         cell.move_down_requested.connect(self.on_cell_move_down)
+        cell.set_translation_service(self.translation_service)
+        if self.settings_manager:
+            cell.set_settings_manager(self.settings_manager)
+        # 监听内容变化
+        if hasattr(cell, 'input_editor'):
+            cell.input_editor.content_changed.connect(self._on_cell_content_changed)
+        if hasattr(cell, 'output_editor'):
+            cell.output_editor.content_changed.connect(self._on_cell_content_changed)
         
     def remove_cell(self, index):
         if 0 <= index < len(self.cells):
@@ -49,9 +80,9 @@ class CellManager:
         index = self.cells.index(cell)
         self.select_cell(index)
         
-    def on_cell_run_requested(self, cell):
+    def on_cell_translate_requested(self, cell):
         index = self.cells.index(cell)
-        self.run_cell(index)
+        self.translate_cell(index)
         
     def on_cell_delete_requested(self, cell):
         index = self.cells.index(cell)
@@ -77,58 +108,52 @@ class CellManager:
         if self.selected_index == from_index:
             self.selected_index = to_index
             
-    def run_cell(self, index):
+    def translate_cell(self, index):
         if 0 <= index < len(self.cells):
-            cell = self.cells[index]
-            if isinstance(cell, CodeCell):
-                cell.run()
-                
-    def run_selected_cell(self):
-        if self.selected_index >= 0:
-            self.run_cell(self.selected_index)
+            self.cells[index].translate()
             
-    def run_all_cells(self):
+    def translate_selected_cell(self):
+        if self.selected_index >= 0:
+            self.translate_cell(self.selected_index)
+            
+    def translate_all_cells(self):
         for i, cell in enumerate(self.cells):
-            if isinstance(cell, CodeCell):
-                cell.run()
-                
-    def insert_cell_above(self, cell_type='code'):
+            cell.translate()
+            
+    def insert_cell_above(self):
         if self.selected_index < 0:
             self.selected_index = 0
-            
-        if cell_type == 'code':
-            new_cell = CodeCell(self.kernel_manager)
-        else:
-            new_cell = MarkdownCell()
-            
+        
+        new_cell = MarkdownCell()
         self.cells.insert(self.selected_index, new_cell)
         self.layout.insertWidget(self.selected_index, new_cell)
-        new_cell.selected.connect(self.on_cell_selected)
-        new_cell.run_requested.connect(self.on_cell_run_requested)
-        new_cell.delete_requested.connect(self.on_cell_delete_requested)
-        new_cell.move_up_requested.connect(self.on_cell_move_up)
-        new_cell.move_down_requested.connect(self.on_cell_move_down)
+        self._connect_cell_signals(new_cell)
+        new_cell.set_translation_service(self.translation_service)
+        if self.settings_manager:
+            new_cell.set_settings_manager(self.settings_manager)
         
-    def insert_cell_below(self, cell_type='code'):
+    def insert_cell_below(self):
         if self.selected_index < 0:
             insert_index = len(self.cells)
         else:
             insert_index = self.selected_index + 1
-            
-        if cell_type == 'code':
-            new_cell = CodeCell(self.kernel_manager)
-        else:
-            new_cell = MarkdownCell()
-            
+        
+        new_cell = MarkdownCell()
         self.cells.insert(insert_index, new_cell)
         self.layout.insertWidget(insert_index, new_cell)
-        new_cell.selected.connect(self.on_cell_selected)
-        new_cell.run_requested.connect(self.on_cell_run_requested)
-        new_cell.delete_requested.connect(self.on_cell_delete_requested)
-        new_cell.move_up_requested.connect(self.on_cell_move_up)
-        new_cell.move_down_requested.connect(self.on_cell_move_down)
+        self._connect_cell_signals(new_cell)
+        new_cell.set_translation_service(self.translation_service)
+        if self.settings_manager:
+            new_cell.set_settings_manager(self.settings_manager)
         
         self.selected_index = insert_index
+        
+    def _connect_cell_signals(self, cell):
+        cell.selected.connect(self.on_cell_selected)
+        cell.translate_requested.connect(self.on_cell_translate_requested)
+        cell.delete_requested.connect(self.on_cell_delete_requested)
+        cell.move_up_requested.connect(self.on_cell_move_up)
+        cell.move_down_requested.connect(self.on_cell_move_down)
         
     def delete_selected_cell(self):
         if self.selected_index >= 0:
@@ -137,59 +162,15 @@ class CellManager:
     def adjust_all_cell_heights(self):
         for cell in self.cells:
             cell.adjust_height()
-            
-    def format_selected_cell(self):
-        if self.selected_index >= 0:
-            cell = self.cells[self.selected_index]
-            if isinstance(cell, CodeCell):
-                cell.format_code()
-            
-    def convert_selected_to_markdown(self):
-        if self.selected_index >= 0:
-            cell = self.cells[self.selected_index]
-            if isinstance(cell, CodeCell):
-                content = cell.get_code()
-                self.remove_cell(self.selected_index)
-                new_cell = MarkdownCell()
-                new_cell.set_content(content)
-                self.cells.insert(self.selected_index, new_cell)
-                self.layout.insertWidget(self.selected_index, new_cell)
-                new_cell.selected.connect(self.on_cell_selected)
-                new_cell.run_requested.connect(self.on_cell_run_requested)
-                new_cell.delete_requested.connect(self.on_cell_delete_requested)
-                new_cell.move_up_requested.connect(self.on_cell_move_up)
-                new_cell.move_down_requested.connect(self.on_cell_move_down)
-                
-    def convert_selected_to_code(self):
-        if self.selected_index >= 0:
-            cell = self.cells[self.selected_index]
-            if isinstance(cell, MarkdownCell):
-                content = cell.get_content()
-                self.remove_cell(self.selected_index)
-                new_cell = CodeCell(self.kernel_manager)
-                new_cell.set_code(content)
-                self.cells.insert(self.selected_index, new_cell)
-                self.layout.insertWidget(self.selected_index, new_cell)
-                new_cell.selected.connect(self.on_cell_selected)
-                new_cell.run_requested.connect(self.on_cell_run_requested)
-                new_cell.delete_requested.connect(self.on_cell_delete_requested)
-                new_cell.move_up_requested.connect(self.on_cell_move_up)
-                new_cell.move_down_requested.connect(self.on_cell_move_down)
                 
     def save_to_file(self, file_path):
         cells_data = []
         for cell in self.cells:
-            if isinstance(cell, CodeCell):
-                cells_data.append({
-                    'type': 'code',
-                    'content': cell.get_code(),
-                    'output': cell.get_output()
-                })
-            elif isinstance(cell, MarkdownCell):
-                cells_data.append({
-                    'type': 'markdown',
-                    'content': cell.get_content()
-                })
+            cells_data.append({
+                'type': 'markdown',
+                'content': cell.get_content(),
+                'output': cell.get_output()
+            })
         
         data = {
             'version': '1.0',
@@ -206,16 +187,27 @@ class CellManager:
             data = json.load(f)
             
         for cell_data in data.get('cells', []):
-            cell_type = cell_data.get('type', 'code')
-            content = cell_data.get('content', '')
+            cell = MarkdownCell()
+            cell.set_content(cell_data.get('content', ''))
+            cell.set_output(cell_data.get('output', ''))
+            self.add_cell(cell)
             
-            if cell_type == 'code':
-                cell = CodeCell(self.kernel_manager)
-                cell.set_code(content)
-                output = cell_data.get('output', '')
-                cell.set_output(output)
-            else:
-                cell = MarkdownCell()
-                cell.set_content(content)
-                
+    def load_from_text_content(self, content: str):
+        """从文本内容加载单元格
+        
+        Args:
+            content: 文本内容，按段落分割
+        """
+        self.clear_all_cells()
+        
+        # 按换行符分割，兼容 \n 和 \r\n
+        lines = content.replace('\r\n', '\n').split('\n')
+        
+        # 过滤空行和纯空白段落
+        paragraphs = [line.strip() for line in lines if line.strip()]
+        
+        # 为每个有效段落创建 MarkdownCell
+        for paragraph in paragraphs:
+            cell = MarkdownCell()
+            cell.set_content(paragraph)
             self.add_cell(cell)

@@ -1,9 +1,13 @@
 from PyQt5.QtGui import QFont, QFontMetrics
 from PyQt5.QtCore import Qt
+import markdown
 
 class SizeCalculator:
     @staticmethod
-    def calculate_text_height(text, width, font=None):
+    def calculate_text_height(text, available_width, font=None):
+        """
+        精确计算文本高度
+        """
         if not text:
             return 0
             
@@ -12,41 +16,50 @@ class SizeCalculator:
             
         fm = QFontMetrics(font)
         
+        # 预留边距空间
+        actual_width = max(10, available_width - 40)
+        
         lines = text.split('\n')
         total_height = 0
+        line_spacing = fm.lineSpacing()
         
         for line in lines:
             if not line:
-                total_height += fm.height()
+                total_height += line_spacing
                 continue
             
-            text_width = fm.width(line)
-            if text_width <= width:
-                total_height += fm.height()
-            else:
-                num_lines = (text_width + width - 1) // width
-                total_height += num_lines * fm.height()
+            # 使用 boundingRect 计算
+            rect = fm.boundingRect(0, 0, actual_width, 10000,
+                                    Qt.TextWordWrap | Qt.TextExpandTabs,
+                                    line)
+            total_height += rect.height()
         
-        return total_height + 20
+        return total_height + 30
     
     @staticmethod
-    def calculate_editor_height(editor, available_width):
-        if hasattr(editor, 'text'):
-            text = editor.toPlainText()
-            font = editor.font()
-            return SizeCalculator.calculate_text_height(text, available_width - 40, font)
-        return 100
+    def calculate_precise_height(text_edit, available_width):
+        """基于实际 QTextEdit 文档计算"""
+        if not text_edit:
+            return 200
+            
+        document = text_edit.document()
+        if not document:
+            return 200
+            
+        actual_width = max(100, available_width - 80)
+        document.setTextWidth(actual_width)
+        
+        height = document.size().height()
+        # 确保有足够的空间
+        return max(height + 30, 150)
     
     @staticmethod
-    def calculate_markdown_height(markdown_text, width):
-        import markdown
-        html = markdown.markdown(markdown_text, extensions=['tables', 'fenced_code'])
-        
-        from PyQt5.QtWidgets import QTextEdit
-        temp_edit = QTextEdit()
-        temp_edit.setHtml(html)
-        temp_edit.setFixedWidth(width - 40)
-        temp_edit.document().setTextWidth(width - 40)
-        
-        height = temp_edit.document().size().height()
-        return max(height + 20, 100)
+    def calculate_markdown_height(text, available_width, font=None):
+        """简化的 markdown 高度计算"""
+        if not text:
+            return 150
+            
+        if font is None:
+            font = QFont("Consolas", 10)
+            
+        return SizeCalculator.calculate_text_height(text, available_width, font)
