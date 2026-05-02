@@ -20,6 +20,13 @@ class OllamaTranslationProvider(BaseTranslationProvider):
         
         logger.info(f"[Ollama] 输入文本: {text}")
         logger.info(f"[Ollama] 完整提示词: {prompt}")
+
+        base = (self.config.get("base_url") or "").lower()
+        if "volces.com" in base or "ark.cn-beijing" in base:
+            raise ValueError(
+                "检测到接口地址为火山方舟域名，但当前仍按 Ollama 调用（会请求 …/api/generate，导致 401 或无效响应）。"
+                "请在「设置 → 翻译服务」中编辑该自定义模型，将「后端」选为「火山方舟 Ark」，并填写 API Key 与推理接入点 ID。"
+            )
         
         try:
             async with httpx.AsyncClient(timeout=self.config["timeout"]) as client:
@@ -77,3 +84,6 @@ class CustomOllamaProvider(OllamaTranslationProvider):
     def __init__(self, name: str, config: Dict[str, Any]):
         super().__init__(name, ProviderType.CUSTOM)
         self.update_config(config)
+        ep = (self.config.get("endpoint") or "").strip()
+        if ep:
+            self.config["base_url"] = ep.rstrip("/")

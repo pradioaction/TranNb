@@ -8,7 +8,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, pyqtSignal as Signal, QThread
 from PyQt5.QtGui import QFont
 from settingmanager.settings_manager import SettingsManager
+from utils.message_box_theme import show_information, show_warning
 import httpx
+import os
 import re
 try:
     from recitation.ui import RecitationSettingsPanel
@@ -64,6 +66,30 @@ class GenericTestWorker(QThread):
             with httpx.Client(timeout=self.timeout) as client:
                 response = client.get(self.base_url)
                 self.test_success.emit(response.status_code)
+        except Exception as e:
+            self.test_failed.emit(str(e))
+
+
+class ArkTestWorker(QThread):
+    """火山方舟：在后台线程调用 Chat 完成连通性检测。"""
+
+    test_success = Signal()
+    test_failed = Signal(str)
+
+    def __init__(self, model_config: dict):
+        super().__init__()
+        self.model_config = model_config
+
+    def run(self):
+        try:
+            from translation.providers.ark import CustomArkProvider
+
+            name = self.model_config.get("name") or "ark"
+            provider = CustomArkProvider(name, self.model_config)
+            if provider.test_connection():
+                self.test_success.emit()
+            else:
+                self.test_failed.emit("请求未完成，请检查模型 ID、密钥与网络")
         except Exception as e:
             self.test_failed.emit(str(e))
 
@@ -419,13 +445,17 @@ class TranslationSettingsPanel(QWidget):
         # 添加系统服务
         self.default_service_combo.addItem("--- 系统内置服务 ---", None)
         for display_name, service_id in self.system_services:
-            provider_id = self.settings_manager.build_provider_id("system", service_id)
+            # 与 TranslationService 中注册的 system_Ollama 一致（勿使用 system_ollama）
+            pid_name = "Ollama" if str(service_id).lower() == "ollama" else service_id
+            provider_id = self.settings_manager.build_provider_id("system", pid_name)
             self.default_service_combo.addItem(display_name, provider_id)
         
         # 添加自定义模型
         self.default_service_combo.addItem("--- 自定义模型 ---", None)
         custom_models = self.settings_manager.get_custom_models()
         for model in custom_models:
+            if not model.get("enabled", True):
+                continue
             model_name = model.get("name", "未命名")
             provider_id = self.settings_manager.build_provider_id("custom", model_name)
             self.default_service_combo.addItem(model_name, provider_id)
@@ -522,7 +552,7 @@ class TranslationSettingsPanel(QWidget):
             self.default_service_combo.setCurrentIndex(index)
         else:
             # 如果找不到，尝试设置默认值
-            default_provider = self.settings_manager.build_provider_id("system", "ollama")
+            default_provider = self.settings_manager.build_provider_id("system", "Ollama")
             index = self.default_service_combo.findData(default_provider)
             if index >= 0:
                 self.default_service_combo.setCurrentIndex(index)
@@ -587,7 +617,20 @@ class ModelEditDialog(QDialog):
                 background-color: {theme['dialog_background']};
             }}
             QWidget {{
+                background-color: {theme['dialog_background']};
                 color: {theme['foreground']};
+            }}
+            QComboBox {{
+                background-color: {theme['input_background']};
+                color: {theme['foreground']};
+                border: 1px solid {theme['input_border']};
+                padding: 5px;
+                border-radius: 3px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {theme['input_background']};
+                color: {theme['foreground']};
+                selection-background-color: {theme['list_item_selected']};
             }}
             QLineEdit {{
                 background-color: {theme['input_background']};
@@ -656,6 +699,11 @@ class ModelEditDialog(QDialog):
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("模型名称")
         form_layout.addRow("名称:", self.name_input)
+
+        self.backend_combo = QComboBox()
+        self.backend_combo.addItem("Ollama", "ollama")
+        self.backend_combo.addItem("火山方舟 Ark", "ark")
+        form_layout.addRow("后端:", self.backend_combo)
         
         self.api_key_input = QLineEdit()
         self.api_key_input.setPlaceholderText("API Key")
@@ -663,11 +711,13 @@ class ModelEditDialog(QDialog):
         form_layout.addRow("API Key:", self.api_key_input)
         
         self.endpoint_input = QLineEdit()
-        self.endpoint_input.setPlaceholderText("https://api.example.com 或 http://localhost:11434")
+        self.endpoint_input.setPlaceholderText(
+            "Ollama: http://host:11434；Ark 可留空（默认北京）或填自定义 base_url"
+        )
         form_layout.addRow("接口地址:", self.endpoint_input)
         
         self.model_input = QLineEdit()
-        self.model_input.setPlaceholderText("模型名称 (可选)")
+        self.model_input.setPlaceholderText("Ollama 模型名；Ark 填推理接入点 ID")
         form_layout.addRow("模型:", self.model_input)
         
         self.timeout_spinbox = QSpinBox()
@@ -716,9 +766,27 @@ class ModelEditDialog(QDialog):
     def _on_test_clicked(self):
         """异步测试连接"""
         config = self.get_model_data()
+        backend = (config.get("backend") or "ollama").lower()
         base_url = config.get("endpoint", "")
+
+        if backend == "ark":
+            if not (config.get("api_key") or "").strip() and not os.environ.get("ARK_API_KEY"):
+                show_warning(self, "错误", "Ark 需要 API Key，或在环境中设置 ARK_API_KEY", theme_manager=self.theme_manager)
+                return
+            if not (config.get("model") or "").strip():
+                show_warning(self, "错误", "请填写方舟模型 / 推理接入点 ID", theme_manager=self.theme_manager)
+                return
+            self.test_button.setEnabled(False)
+            self.test_button.setText("测试中...")
+            self._ark_edit_test_worker = ArkTestWorker(config)
+            self._ark_edit_test_worker.test_success.connect(self._on_ark_edit_test_success)
+            self._ark_edit_test_worker.test_failed.connect(self._on_ark_edit_test_failed)
+            self._ark_edit_test_worker.finished.connect(self._on_custom_test_finished)
+            self._ark_edit_test_worker.start()
+            return
+
         if not base_url:
-            QMessageBox.warning(self, "错误", "请先填写接口地址！")
+            show_warning(self, "错误", "请先填写接口地址！", theme_manager=self.theme_manager)
             return
         
         # 禁用测试按钮防止重复点击
@@ -746,37 +814,47 @@ class ModelEditDialog(QDialog):
     
     def _on_custom_test_success(self, models_count):
         """自定义模型测试成功（Ollama）"""
-        QMessageBox.information(self, "测试成功", f"连接成功！发现 {models_count} 个模型。")
+        show_information(self, "测试成功", f"连接成功！发现 {models_count} 个模型。", theme_manager=self.theme_manager)
     
     def _on_custom_test_failed(self, error_msg):
         """自定义模型测试失败"""
-        QMessageBox.warning(self, "测试失败", f"连接失败！错误信息: {error_msg}")
+        show_warning(self, "测试失败", f"连接失败！错误信息: {error_msg}", theme_manager=self.theme_manager)
     
     def _on_generic_test_success(self, status_code):
         """通用测试成功"""
-        QMessageBox.information(self, "测试成功", f"连接成功！服务器状态码: {status_code}")
+        show_information(self, "测试成功", f"连接成功！服务器状态码: {status_code}", theme_manager=self.theme_manager)
     
     def _on_generic_test_failed(self, error_msg):
         """通用测试失败"""
-        QMessageBox.warning(self, "测试失败", f"连接失败！错误信息: {error_msg}")
+        show_warning(self, "测试失败", f"连接失败！错误信息: {error_msg}", theme_manager=self.theme_manager)
     
     def _on_custom_test_finished(self):
         """测试完成，恢复按钮状态"""
         self.test_button.setEnabled(True)
         self.test_button.setText("测试连接")
+
+    def _on_ark_edit_test_success(self):
+        show_information(self, "测试成功", "方舟 Chat 调用成功。", theme_manager=self.theme_manager)
+
+    def _on_ark_edit_test_failed(self, error_msg):
+        show_warning(self, "测试失败", f"连接失败：{error_msg}", theme_manager=self.theme_manager)
     
     def load_model_data(self, model_data):
         self.name_input.setText(model_data.get('name', ''))
+        backend = model_data.get("backend", "ollama")
+        idx = self.backend_combo.findData(backend)
+        self.backend_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.api_key_input.setText(model_data.get('api_key', ''))
         self.endpoint_input.setText(model_data.get('endpoint', ''))
         self.model_input.setText(model_data.get('model', ''))
         self.timeout_spinbox.setValue(model_data.get('timeout', 30))
         self.proxy_input.setText(model_data.get('proxy', ''))
-        self.enabled_checkbox.setChecked(model_data.get('enabled', False))
+        self.enabled_checkbox.setChecked(model_data.get('enabled', True))
     
     def get_model_data(self):
         return {
             'name': self.name_input.text().strip(),
+            'backend': self.backend_combo.currentData() or 'ollama',
             'api_key': self.api_key_input.text().strip(),
             'endpoint': self.endpoint_input.text().strip(),
             'model': self.model_input.text().strip(),
@@ -895,7 +973,7 @@ class ModelManagerWidget(QWidget):
             item = QListWidgetItem(model.get('name', '未命名'))
             item.setData(Qt.UserRole, model)
             item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Checked if model.get('enabled', False) else Qt.Unchecked)
+            item.setCheckState(Qt.Checked if model.get('enabled', True) else Qt.Unchecked)
             self.model_list.addItem(item)
     
     def on_model_item_changed(self, item):
@@ -926,9 +1004,28 @@ class ModelManagerWidget(QWidget):
         if not model:
             return
         
+        backend = (model.get("backend") or "ollama").lower()
         base_url = model.get("endpoint", "")
+
+        if backend == "ark":
+            if not (model.get("api_key") or "").strip() and not os.environ.get("ARK_API_KEY"):
+                show_warning(self, "错误", "Ark 需要 API Key 或环境变量 ARK_API_KEY", theme_manager=self.theme_manager)
+                return
+            if not (model.get("model") or "").strip():
+                show_warning(self, "错误", "请填写方舟模型 / 推理接入点 ID", theme_manager=self.theme_manager)
+                return
+            self.test_btn.setEnabled(False)
+            self.test_btn.setText("测试中...")
+            self.current_test_model_name = model.get('name', '未命名')
+            self.manager_ark_worker = ArkTestWorker(model)
+            self.manager_ark_worker.test_success.connect(self._on_manager_ark_test_success)
+            self.manager_ark_worker.test_failed.connect(self._on_manager_test_failed)
+            self.manager_ark_worker.finished.connect(self._on_manager_test_finished)
+            self.manager_ark_worker.start()
+            return
+
         if not base_url:
-            QMessageBox.warning(self, "错误", "该模型没有配置接口地址！")
+            show_warning(self, "错误", "该模型没有配置接口地址！", theme_manager=self.theme_manager)
             return
         
         # 禁用测试按钮防止重复点击
@@ -957,17 +1054,40 @@ class ModelManagerWidget(QWidget):
             self.manager_generic_worker.finished.connect(self._on_manager_test_finished)
             self.manager_generic_worker.start()
     
+    def _on_manager_ark_test_success(self):
+        show_information(
+            self,
+            "测试成功",
+            f"模型 '{self.current_test_model_name}' 方舟 Chat 调用成功。",
+            theme_manager=self.theme_manager,
+        )
+
     def _on_manager_test_success(self, models_count):
         """模型列表测试成功"""
-        QMessageBox.information(self, "测试成功", f"模型 '{self.current_test_model_name}' 连接成功！发现 {models_count} 个模型。")
+        show_information(
+            self,
+            "测试成功",
+            f"模型 '{self.current_test_model_name}' 连接成功！发现 {models_count} 个模型。",
+            theme_manager=self.theme_manager,
+        )
     
     def _on_manager_generic_test_success(self, status_code):
         """通用测试成功"""
-        QMessageBox.information(self, "测试成功", f"模型 '{self.current_test_model_name}' 连接成功！服务器状态码: {status_code}")
+        show_information(
+            self,
+            "测试成功",
+            f"模型 '{self.current_test_model_name}' 连接成功！服务器状态码: {status_code}",
+            theme_manager=self.theme_manager,
+        )
     
     def _on_manager_test_failed(self, error_msg):
         """测试失败"""
-        QMessageBox.warning(self, "测试失败", f"模型 '{self.current_test_model_name}' 连接失败！错误信息: {error_msg}")
+        show_warning(
+            self,
+            "测试失败",
+            f"模型 '{self.current_test_model_name}' 连接失败！错误信息: {error_msg}",
+            theme_manager=self.theme_manager,
+        )
     
     def _on_manager_test_finished(self):
         """测试完成，恢复按钮状态"""

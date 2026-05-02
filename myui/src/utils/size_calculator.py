@@ -38,20 +38,26 @@ class SizeCalculator:
     
     @staticmethod
     def calculate_precise_height(text_edit, available_width):
-        """基于实际 QTextEdit 文档计算"""
+        """基于 QTextEdit 文档布局高度（available_width 应为视口可用宽度，避免估宽导致行数错误）"""
         if not text_edit:
-            return 200
-            
+            return 32
+
         document = text_edit.document()
         if not document:
-            return 200
-            
-        actual_width = max(100, available_width - 80)
-        document.setTextWidth(actual_width)
-        
-        height = document.size().height()
-        # 确保有足够的空间
-        return max(height + 30, 150)
+            return 32
+
+        margin = 2 * document.documentMargin()
+        text_width = max(40, int(available_width - margin))
+        document.setTextWidth(text_width)
+
+        layout = document.documentLayout()
+        if layout:
+            doc_h = layout.documentSize().height()
+        else:
+            doc_h = document.size().height()
+
+        frame_pad = 6
+        return max(28, int(doc_h + margin + frame_pad))
     
     @staticmethod
     def calculate_markdown_height(text, available_width, font=None):

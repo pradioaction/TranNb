@@ -1,3 +1,4 @@
+
 # 翻译笔记本 API 接口文档
 
 ## 目录
@@ -8,9 +9,10 @@
 - [工作区管理器 (WorkspaceManager)](#工作区管理器-workspacemanager)
 - [设置管理器 (SettingsManager)](#设置管理器-settingsmanager)
 - [翻译提供者 (Translation Providers)](#翻译提供者-translation-providers)
-- [Markdown 单元格 (MarkdownCell)](#markdown-单元格-markdowncell)
+- [单元格 (Cells)](#单元格-cells)
 - [主题管理器 (ThemeManager)](#主题管理器-thememanager)
 - [文件工具 (FileUtils)](#文件工具-fileutils)
+- [背诵模式 API](#背诵模式-api)
 
 ---
 
@@ -27,14 +29,14 @@ class TranslationService:
 
 #### `set_settings_manager(settings_manager)`
 
-设置设置管理器并应用配置。
+设置配置管理器并应用配置。
 
 **参数**:
-- `settings_manager` (SettingsManager): 设置管理器实例
+- `settings_manager` (SettingsManager): 配置管理器实例
 
 ---
 
-#### `register_provider(provider_id: str, provider: BaseTranslationProvider) -> bool`
+#### `register_provider(provider_id: str, provider: BaseTranslationProvider) -&gt; bool`
 
 注册一个翻译提供者。
 
@@ -54,7 +56,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `unregister_provider(provider_id: str) -> bool`
+#### `unregister_provider(provider_id: str) -&gt; bool`
 
 注销一个翻译提供者。
 
@@ -66,7 +68,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `get_provider(provider_id: Optional[str] = None) -> Optional[BaseTranslationProvider]`
+#### `get_provider(provider_id: Optional[str] = None) -&gt; Optional[BaseTranslationProvider]`
 
 获取指定的翻译提供者，或获取当前活动提供者。
 
@@ -78,7 +80,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `set_current_provider(provider_id: str) -> bool`
+#### `set_current_provider(provider_id: str) -&gt; bool`
 
 设置当前活动的翻译提供者。
 
@@ -90,7 +92,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `get_current_provider() -> Optional[BaseTranslationProvider]`
+#### `get_current_provider() -&gt; Optional[BaseTranslationProvider]`
 
 获取当前活动的翻译提供者。
 
@@ -99,7 +101,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `list_providers() -> List[str]`
+#### `list_providers() -&gt; List[str]`
 
 列出所有已注册的提供者 ID。
 
@@ -108,7 +110,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `list_providers_by_type(provider_type: ProviderType) -> List[str]`
+#### `list_providers_by_type(provider_type: ProviderType) -&gt; List[str]`
 
 按类型列出提供者。
 
@@ -143,7 +145,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `get_all_providers_info() -> Dict[str, Dict[str, Any]]`
+#### `get_all_providers_info() -&gt; Dict[str, Dict[str, Any]]`
 
 获取所有提供者的信息。
 
@@ -152,7 +154,7 @@ service.register_provider("system_Ollama", ollama)
 
 ---
 
-#### `async translate(text: str, prompt_template: str = "", provider_name: Optional[str] = None, **kwargs) -> str`
+#### `async translate(text: str, prompt_template: str = "", provider_name: Optional[str] = None, **kwargs) -&gt; str`
 
 执行翻译。
 
@@ -178,7 +180,25 @@ result = await service.translate(
 
 ---
 
-#### `process_with_parse_mode(input_data: Any, prompt_template: str = "") -> Any`
+#### `async generate_scene_text(words: List[str], prompt_template: Optional[str] = None, provider_name: Optional[str] = None, **kwargs) -&gt; str`
+
+生成包含指定单词的场景文章。
+
+**参数**:
+- `words` (List[str]): 要包含在文章中的单词列表
+- `prompt_template` (str, optional): 提示词模板
+- `provider_name` (str, optional): 指定使用的提供者
+- `**kwargs`: 其他可选参数
+
+**返回值**:
+- `str`: 生成的文章
+
+**异常**:
+- `ValueError`: 没有可用的提供者
+
+---
+
+#### `process_with_parse_mode(input_data: Any, prompt_template: str = "") -&gt; Any`
 
 使用解析模式处理（用于单元格翻译）。
 
@@ -216,10 +236,10 @@ class CellManager(QObject):
 
 #### `set_settings_manager(settings_manager)`
 
-设置设置管理器。
+设置配置管理器。
 
 **参数**:
-- `settings_manager` (SettingsManager): 设置管理器实例
+- `settings_manager` (SettingsManager): 配置管理器实例
 
 ---
 
@@ -376,7 +396,7 @@ class FileService(QObject):
 
 ---
 
-#### `is_file_open(file_path: str = None) -> bool`
+#### `is_file_open(file_path: str = None) -&gt; bool`
 
 检查文件是否已打开，或是否有文件已打开。
 
@@ -388,7 +408,7 @@ class FileService(QObject):
 
 ---
 
-#### `get_current_file() -> Optional[str]`
+#### `get_current_file() -&gt; Optional[str]`
 
 获取当前打开的文件路径。
 
@@ -397,7 +417,7 @@ class FileService(QObject):
 
 ---
 
-#### `is_modified() -> bool`
+#### `is_modified() -&gt; bool`
 
 检查当前文件是否有未保存的修改。
 
@@ -415,7 +435,7 @@ class FileService(QObject):
 
 ---
 
-#### `create_new_file(filename: str) -> Optional[str]`
+#### `create_new_file(filename: str) -&gt; Optional[str]`
 
 在工作区创建新文件并打开。
 
@@ -431,7 +451,7 @@ class FileService(QObject):
 
 ---
 
-#### `create_file_with_content(filename: str, content: str) -> Optional[str]`
+#### `create_file_with_content(filename: str, content: str) -&gt; Optional[str]`
 
 在工作区创建新文件并加载文本内容，自动按段落分割成单元格。
 
@@ -448,7 +468,7 @@ class FileService(QObject):
 
 ---
 
-#### `open_file(file_path: str, check_unsaved: bool = True) -> bool`
+#### `open_file(file_path: str, check_unsaved: bool = True) -&gt; bool`
 
 打开文件。
 
@@ -465,7 +485,7 @@ class FileService(QObject):
 
 ---
 
-#### `save_file() -> bool`
+#### `save_file() -&gt; bool`
 
 保存当前文件。
 
@@ -478,7 +498,7 @@ class FileService(QObject):
 
 ---
 
-#### `save_file_as(new_file_path: str) -> bool`
+#### `save_file_as(new_file_path: str) -&gt; bool`
 
 另存为新文件。
 
@@ -494,7 +514,7 @@ class FileService(QObject):
 
 ---
 
-#### `rename_file(old_path: str, new_filename: str) -> bool`
+#### `rename_file(old_path: str, new_filename: str) -&gt; bool`
 
 重命名文件。
 
@@ -511,7 +531,7 @@ class FileService(QObject):
 
 ---
 
-#### `delete_file(file_path: str) -> bool`
+#### `delete_file(file_path: str) -&gt; bool`
 
 删除文件。
 
@@ -551,7 +571,7 @@ class WorkspaceManager(QObject):
 
 ### 方法
 
-#### `load_workspace() -> bool`
+#### `load_workspace() -&gt; bool`
 
 加载保存的工作区配置。
 
@@ -560,7 +580,7 @@ class WorkspaceManager(QObject):
 
 ---
 
-#### `set_workspace(path: str, save: bool = True) -> bool`
+#### `set_workspace(path: str, save: bool = True) -&gt; bool`
 
 设置工作区路径。
 
@@ -577,7 +597,7 @@ class WorkspaceManager(QObject):
 
 ---
 
-#### `get_workspace() -> Optional[str]`
+#### `get_workspace() -&gt; Optional[str]`
 
 获取当前工作区路径。
 
@@ -586,7 +606,7 @@ class WorkspaceManager(QObject):
 
 ---
 
-#### `validate_workspace_path(path: str) -> Tuple[bool, str]`
+#### `validate_workspace_path(path: str) -&gt; Tuple[bool, str]`
 
 验证工作区路径。
 
@@ -598,9 +618,9 @@ class WorkspaceManager(QObject):
 
 ---
 
-#### `get_transnb_files(recursive: bool = False) -> List[str]`
+#### `get_transnb_files(recursive: bool = False) -&gt; List[str]`
 
-获取工作区下所有 .transnb 文件。
+获取工作区下的所有 .transnb 文件。
 
 **参数**:
 - `recursive` (bool, optional): 是否递归查找，默认 False
@@ -621,7 +641,7 @@ class SettingsManager(QObject):
 
 ### 方法
 
-#### `get(key: str, default: Any = None) -> Any`
+#### `get(key: str, default: Any = None) -&gt; Any`
 
 获取配置值。
 
@@ -661,7 +681,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_translation_settings() -> Dict[str, Any]`
+#### `get_translation_settings() -&gt; Dict[str, Any]`
 
 获取翻译相关设置。
 
@@ -680,7 +700,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_all_settings() -> Dict[str, Any]`
+#### `get_all_settings() -&gt; Dict[str, Any]`
 
 获取所有设置。
 
@@ -697,7 +717,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ### 提示词模板相关
 
-#### `get_prompt_templates() -> Dict[str, str]`
+#### `get_prompt_templates() -&gt; Dict[str, str]`
 
 获取所有提示词模板。
 
@@ -716,7 +736,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_prompt_template(template_type: str) -> str`
+#### `get_prompt_template(template_type: str) -&gt; str`
 
 获取指定类型的提示词模板。
 
@@ -741,7 +761,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ### 自定义模型相关
 
-#### `get_custom_models() -> List[Dict[str, Any]]`
+#### `get_custom_models() -&gt; List[Dict[str, Any]]`
 
 获取自定义模型列表。
 
@@ -772,7 +792,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ### 工作区相关
 
-#### `get_workspace() -> Dict[str, Any]`
+#### `get_workspace() -&gt; Dict[str, Any]`
 
 获取工作区配置。
 
@@ -791,7 +811,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_workspace_path() -> str`
+#### `get_workspace_path() -&gt; str`
 
 获取工作区路径。
 
@@ -810,7 +830,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_current_file() -> str`
+#### `get_current_file() -&gt; str`
 
 获取上次打开的文件路径。
 
@@ -829,7 +849,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_file_browser_path() -> str`
+#### `get_file_browser_path() -&gt; str`
 
 获取文件浏览器路径。
 
@@ -850,7 +870,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ### 翻译提供者相关
 
-#### `get_current_translation_provider() -> str`
+#### `get_current_translation_provider() -&gt; str`
 
 获取当前翻译提供者 ID。
 
@@ -869,7 +889,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ---
 
-#### `get_ollama_settings() -> Dict[str, Any]`
+#### `get_ollama_settings() -&gt; Dict[str, Any]`
 
 获取 Ollama 配置。
 
@@ -890,7 +910,7 @@ settings.set("translation.ollama.model", "qwen2.5:7b")
 
 ### 阅读字体相关
 
-#### `get_reading_font_size() -> int`
+#### `get_reading_font_size() -&gt; int`
 
 获取阅读模式字体大小。
 
@@ -925,7 +945,7 @@ class BaseTranslationProvider(ABC):
 
 #### 抽象方法
 
-##### `async translate(text: str, prompt_template: str = "", **kwargs) -> str`
+##### `async translate(text: str, prompt_template: str = "", **kwargs) -&gt; str`
 
 执行翻译。
 
@@ -939,7 +959,7 @@ class BaseTranslationProvider(ABC):
 
 ---
 
-##### `test_connection() -> bool`
+##### `test_connection() -&gt; bool`
 
 测试连接。
 
@@ -948,7 +968,7 @@ class BaseTranslationProvider(ABC):
 
 ---
 
-##### `get_info() -> Dict[str, Any]`
+##### `get_info() -&gt; Dict[str, Any]`
 
 获取提供者信息。
 
@@ -969,7 +989,7 @@ class BaseTranslationProvider(ABC):
 
 ---
 
-##### `get_config(key: str, default: Any = None) -> Any`
+##### `get_config(key: str, default: Any = None) -&gt; Any`
 
 获取配置项。
 
@@ -991,7 +1011,7 @@ class BaseTranslationProvider(ABC):
 
 ---
 
-##### `get_display_name() -> str`
+##### `get_display_name() -&gt; str`
 
 获取显示名称。
 
@@ -1021,7 +1041,7 @@ class OllamaTranslationProvider(BaseTranslationProvider):
 
 #### 方法
 
-##### `async translate(text: str, prompt_template: str = "", **kwargs) -> str`
+##### `async translate(text: str, prompt_template: str = "", **kwargs) -&gt; str`
 
 执行翻译（实现基类抽象方法）。
 
@@ -1031,7 +1051,7 @@ class OllamaTranslationProvider(BaseTranslationProvider):
 
 ---
 
-##### `list_models() -> List[str]`
+##### `list_models() -&gt; List[str]`
 
 获取 Ollama 本地已下载的模型列表。
 
@@ -1043,7 +1063,7 @@ class OllamaTranslationProvider(BaseTranslationProvider):
 
 ---
 
-##### `test_connection() -> bool`
+##### `test_connection() -&gt; bool`
 
 测试 Ollama 服务连接。
 
@@ -1052,7 +1072,7 @@ class OllamaTranslationProvider(BaseTranslationProvider):
 
 ---
 
-##### `get_info() -> Dict[str, Any]`
+##### `get_info() -&gt; Dict[str, Any]`
 
 获取提供者信息。
 
@@ -1091,69 +1111,59 @@ class ProviderType(Enum):
 
 ---
 
-## Markdown 单元格 (MarkdownCell)
+## 单元格 (Cells)
 
-### 类定义
+### BaseCell (基类)
+
+#### 类定义
 
 ```python
-class MarkdownCell(BaseCell):
-    def __init__(self)
+class BaseCell(QWidget):
+    selected = Signal(object)
+    translate_requested = Signal(object)
+    delete_requested = Signal(object)
+    move_up_requested = Signal(object)
+    move_down_requested = Signal(object)
 ```
 
-### 方法
+#### 信号
 
-#### `set_settings_manager(settings_manager)`
+- `selected`: 单元格被选中
+- `translate_requested`: 请求翻译
+- `delete_requested`: 请求删除
+- `move_up_requested`: 请求上移
+- `move_down_requested`: 请求下移
 
-设置设置管理器。
+#### 方法
 
-**参数**:
-- `settings_manager` (SettingsManager): 设置管理器实例
+##### `set_translation_service(service)`
 
----
-
-#### `set_content(content: str)`
-
-设置源文本内容。
-
-**参数**:
-- `content` (str): 文本内容
-
----
-
-#### `get_content() -> str`
-
-获取源文本内容。
-
-**返回值**:
-- `str`: 文本内容
-
----
-
-#### `set_output(content: str)`
-
-设置翻译结果。
+设置翻译服务。
 
 **参数**:
-- `content` (str): 翻译结果文本
+- `service` (TranslationService): 翻译服务实例
 
 ---
 
-#### `get_output() -> str`
+##### `set_settings_manager(manager)`
 
-获取翻译结果。
+设置配置管理器。
 
-**返回值**:
-- `str`: 翻译结果文本
-
----
-
-#### `translate()`
-
-执行翻译。
+**参数**:
+- `manager` (SettingsManager): 配置管理器实例
 
 ---
 
-#### `apply_theme(theme: Dict[str, str])`
+##### `set_selected(selected)`
+
+设置选中状态。
+
+**参数**:
+- `selected` (bool): 是否选中
+
+---
+
+##### `apply_theme(theme)`
 
 应用主题。
 
@@ -1162,57 +1172,80 @@ class MarkdownCell(BaseCell):
 
 ---
 
-#### `adjust_height()`
+##### `set_gutter_visible(visible)`
 
-调整单元格高度。
+控制左侧按钮区域显示/隐藏。
+
+**参数**:
+- `visible` (bool): 是否显示
 
 ---
 
-### MarkdownEditor (内部组件)
+##### `adjust_height()`
+
+调整单元格高度（子类可覆盖）。
+
+---
+
+### MarkdownCell
 
 #### 类定义
 
 ```python
-class MarkdownEditor(QWidget):
-    content_changed = Signal()
-    needs_height_update = Signal()
+class MarkdownCell(BaseCell):
+    def __init__(self)
 ```
 
 #### 方法
 
-##### `set_content(content: str)`
+##### `set_settings_manager(settings_manager)`
 
-设置内容。
+设置配置管理器。
 
 **参数**:
-- `content` (str): 内容
+- `settings_manager` (SettingsManager): 配置管理器实例
 
 ---
 
-##### `get_content() -> str`
+##### `set_content(content: str)`
 
-获取内容。
+设置源文本内容。
+
+**参数**:
+- `content` (str): 文本内容
+
+---
+
+##### `get_content() -&gt; str`
+
+获取源文本内容。
 
 **返回值**:
-- `str`: 内容
+- `str`: 文本内容
 
 ---
 
-##### `update_reading()`
+##### `set_output(content: str)`
 
-更新阅读模式渲染。
+设置翻译结果。
 
----
-
-##### `switch_to_edit_mode()`
-
-切换到编辑模式。
+**参数**:
+- `content` (str): 翻译结果文本
 
 ---
 
-##### `switch_to_reading_mode()`
+##### `get_output() -&gt; str`
 
-切换到阅读模式。
+获取翻译结果。
+
+**返回值**:
+- `str`: 翻译结果文本
+
+---
+
+##### `translate()`
+
+执行翻译。
 
 ---
 
@@ -1221,20 +1254,137 @@ class MarkdownEditor(QWidget):
 应用主题。
 
 **参数**:
+- `theme` (Dict): 主题配置字典
+
+---
+
+##### `adjust_height()`
+
+调整单元格高度。
+
+---
+
+##### `toggle_cell_collapse()`
+
+切换单元格折叠状态。
+
+---
+
+##### `toggle_input_collapse()`
+
+切换原文折叠状态。
+
+---
+
+##### `toggle_output_collapse()`
+
+切换译文折叠状态。
+
+---
+
+#### MarkdownEditor (内部组件)
+
+##### 类定义
+
+```python
+class MarkdownEditor(QWidget):
+    content_changed = Signal()
+    needs_height_update = Signal()
+```
+
+##### 方法
+
+###### `set_content(content: str)`
+
+设置内容。
+
+**参数**:
+- `content` (str): 内容
+
+---
+
+###### `get_content() -&gt; str`
+
+获取内容。
+
+**返回值**:
+- `str`: 内容
+
+---
+
+###### `update_reading()`
+
+更新阅读模式渲染。
+
+---
+
+###### `switch_to_edit_mode()`
+
+切换到编辑模式。
+
+---
+
+###### `switch_to_reading_mode()`
+
+切换到阅读模式。
+
+---
+
+###### `apply_theme(theme: Dict[str, str])`
+
+应用主题。
+
+**参数**:
 - `theme` (Dict): 主题配置
 
 ---
 
-##### `set_settings_manager(settings_manager)`
+###### `set_settings_manager(settings_manager)`
 
-设置设置管理器。
+设置配置管理器。
 
 **参数**:
-- `settings_manager` (SettingsManager): 设置管理器实例
+- `settings_manager` (SettingsManager): 配置管理器实例
 
 ---
 
 ## 主题管理器 (ThemeManager)
+
+### 类定义
+
+```python
+class ThemeManager(QObject):
+    theme_changed = pyqtSignal(str)
+```
+
+### 方法
+
+#### `set_theme(theme_name: str)`
+
+设置主题。
+
+**参数**:
+- `theme_name` (str): 主题名称 (`light` 或 `dark`)
+
+---
+
+#### `get_theme() -&gt; Dict[str, str]`
+
+获取当前主题配置。
+
+**返回值**:
+- `Dict[str, str]`: 主题配置字典
+
+---
+
+#### `get_theme_name() -&gt; str`
+
+获取当前主题名称。
+
+**返回值**:
+- `str`: 主题名称
+
+---
 
 ### 主题配置
 
@@ -1249,7 +1399,8 @@ class MarkdownEditor(QWidget):
     'markdown_background': '#fafafa',
     'border': '#cccccc',
     'output_border': '#dddddd',
-    'scroll_area': '#f5f5f5'
+    'scroll_area': '#f5f5f5',
+    'cell_selected': '#e8f4fd'
 }
 ```
 
@@ -1264,7 +1415,8 @@ class MarkdownEditor(QWidget):
     'markdown_background': '#252526',
     'border': '#3c3c3c',
     'output_border': '#333333',
-    'scroll_area': '#1e1e1e'
+    'scroll_area': '#1e1e1e',
+    'cell_selected': '#1e3a5f'
 }
 ```
 
@@ -1282,7 +1434,7 @@ class MarkdownEditor(QWidget):
 
 ### 方法
 
-#### `normalize_path(path: str) -> Path`
+#### `normalize_path(path: str) -&gt; Path`
 
 规范化路径。
 
@@ -1294,7 +1446,7 @@ class MarkdownEditor(QWidget):
 
 ---
 
-#### `ensure_transnb_extension(filename: str) -> str`
+#### `ensure_transnb_extension(filename: str) -&gt; str`
 
 确保文件名有 .transnb 扩展名。
 
@@ -1306,7 +1458,7 @@ class MarkdownEditor(QWidget):
 
 ---
 
-#### `validate_filename(filename: str, workspace: str) -> Tuple[bool, str]`
+#### `validate_filename(filename: str, workspace: str) -&gt; Tuple[bool, str]`
 
 验证文件名有效性。
 
@@ -1319,7 +1471,7 @@ class MarkdownEditor(QWidget):
 
 ---
 
-#### `is_path_in_workspace(file_path: str, workspace: str) -> bool`
+#### `is_path_in_workspace(file_path: str, workspace: str) -&gt; bool`
 
 检查文件路径是否在工作区内。
 
@@ -1332,7 +1484,7 @@ class MarkdownEditor(QWidget):
 
 ---
 
-#### `check_directory_permissions(directory: str) -> Tuple[bool, str]`
+#### `check_directory_permissions(directory: str) -&gt; Tuple[bool, str]`
 
 检查目录权限。
 
@@ -1344,137 +1496,7 @@ class MarkdownEditor(QWidget):
 
 ---
 
-## 附录：配置文件完整格式
-
-### settings.json
-
-```json
-{
-    "translation": {
-        "enabled": false,
-        "current_provider": "system_Ollama",
-        "ollama": {
-            "base_url": "http://127.0.0.1:11434",
-            "model": "translation_20251005:latest",
-            "timeout": 30
-        },
-        "openai": {
-            "api_key": "",
-            "base_url": "https://api.openai.com/v1",
-            "model": "gpt-3.5-turbo"
-        },
-        "service": "local",
-        "google": {
-            "name": "谷歌翻译",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 26,
-            "proxy": ""
-        },
-        "microsoft": {
-            "name": "微软翻译",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "deepl": {
-            "name": "DeepL",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "qwen": {
-            "name": "通义千问",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "ernie": {
-            "name": "文心一言",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "gpt": {
-            "name": "GPT",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "local": {
-            "name": "本地模型 API",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "timeout": 30,
-            "proxy": ""
-        }
-    },
-    "theme": "light",
-    "window": {
-        "width": 1200,
-        "height": 800
-    },
-    "prompt_templates": {
-        "translation": "请翻译{input}",
-        "analysis": "解析{input}\n根据输入文本的长度自动切换分析深度：若输入为一句话（无句号或仅有一个完整主谓结构），则进行逐词逐句的雅思式深度分析，解析重难点单词，固定搭配，句式结构，整体翻译；若输入为一段话（含≥2个完整主谓结构），则仅提供整体翻译，不做额外解析。",
-        "scenery": "请完成一篇包含{input}的文章"
-    },
-    "custom_models": [
-        {
-            "name": "modletest",
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": "",
-            "enabled": true
-        }
-    ],
-    "workspace": {
-        "current_path": "C:\\Users\\Pradio\\Downloads\\test",
-        "recent_files": [],
-        "cell_states": {},
-        "current_file": "C:\\Users\\Pradio\\Downloads\\test\\2.transnb",
-        "file_browser_path": "G:\\program\\QSDReader-All\\newappsdediter\\myui"
-    },
-    "reading": {
-        "font_size": 12
-    }
-}
-```
-
-### .transnb 文件格式
-
-```json
-{
-    "version": "1.0",
-    "cells": [
-        {
-            "type": "markdown",
-            "content": "源文本内容",
-            "output": "翻译结果内容"
-        }
-    ]
-}
-```
-
----
-
-## 背诵模式模块 API
+## 背诵模式 API
 
 ### 数据模型 (src/recitation/models.py)
 
@@ -1569,7 +1591,7 @@ class PathManager:
 
 ---
 
-##### `get_workspace() -> Optional[str]`
+##### `get_workspace() -&gt; Optional[str]`
 
 获取当前工作区路径。
 
@@ -1578,7 +1600,7 @@ class PathManager:
 
 ---
 
-##### `get_data_dir() -> Optional[Path]`
+##### `get_data_dir() -&gt; Optional[Path]`
 
 获取背诵模式数据目录路径（`.TransRead/`）。
 
@@ -1587,7 +1609,7 @@ class PathManager:
 
 ---
 
-##### `get_db_path() -> Optional[Path]`
+##### `get_db_path() -&gt; Optional[Path]`
 
 获取数据库文件路径。
 
@@ -1596,7 +1618,7 @@ class PathManager:
 
 ---
 
-##### `get_config_path() -> Optional[Path]`
+##### `get_config_path() -&gt; Optional[Path]`
 
 获取配置文件路径。
 
@@ -1605,7 +1627,7 @@ class PathManager:
 
 ---
 
-##### `ensure_data_dir() -> bool`
+##### `ensure_data_dir() -&gt; bool`
 
 确保数据目录存在，不存在则创建（Windows 下自动设为隐藏）。
 
@@ -1614,7 +1636,7 @@ class PathManager:
 
 ---
 
-##### `is_valid() -> bool`
+##### `is_valid() -&gt; bool`
 
 检查路径管理器是否有效（是否已设置工作区）。
 
@@ -1634,7 +1656,7 @@ class DatabaseManager:
 
 **方法**:
 
-##### `initialize() -> bool`
+##### `initialize() -&gt; bool`
 
 初始化数据库，创建数据目录和表结构。
 
@@ -1643,7 +1665,7 @@ class DatabaseManager:
 
 ---
 
-##### `vacuum() -> bool`
+##### `vacuum() -&gt; bool`
 
 压缩数据库，清理未使用空间。
 
@@ -1652,7 +1674,7 @@ class DatabaseManager:
 
 ---
 
-##### `is_initialized() -> bool`
+##### `is_initialized() -&gt; bool`
 
 检查数据库是否已初始化。
 
@@ -1661,7 +1683,7 @@ class DatabaseManager:
 
 ---
 
-##### `get_connection() -> ContextManager[sqlite3.Connection]`
+##### `get_connection() -&gt; ContextManager[sqlite3.Connection]`
 
 获取数据库连接的上下文管理器。
 
@@ -1687,7 +1709,7 @@ class RecitationDAL:
 
 ##### 词书操作
 
-###### `add_book(book: Book) -> Optional[Book]`
+###### `add_book(book: Book) -&gt; Optional[Book]`
 
 添加词书。
 
@@ -1699,7 +1721,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_book_by_id(book_id: int) -> Optional[Book]`
+###### `get_book_by_id(book_id: int) -&gt; Optional[Book]`
 
 根据 ID 获取词书。
 
@@ -1711,7 +1733,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_all_books() -> List[Book]`
+###### `get_all_books() -&gt; List[Book]`
 
 获取所有词书。
 
@@ -1720,7 +1742,7 @@ class RecitationDAL:
 
 ---
 
-###### `update_book(book: Book) -> bool`
+###### `update_book(book: Book) -&gt; bool`
 
 更新词书。
 
@@ -1732,7 +1754,7 @@ class RecitationDAL:
 
 ---
 
-###### `delete_book(book_id: int) -> bool`
+###### `delete_book(book_id: int) -&gt; bool`
 
 删除词书（级联删除相关单词和学习记录）。
 
@@ -1746,7 +1768,7 @@ class RecitationDAL:
 
 ##### 单词操作
 
-###### `add_word(word: Word) -> Optional[Word]`
+###### `add_word(word: Word) -&gt; Optional[Word]`
 
 添加单词。
 
@@ -1758,7 +1780,7 @@ class RecitationDAL:
 
 ---
 
-###### `add_words_batch(words: List[Word]) -> int`
+###### `add_words_batch(words: List[Word]) -&gt; int`
 
 批量添加单词。
 
@@ -1770,7 +1792,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_word_by_id(word_id: int) -> Optional[Word]`
+###### `get_word_by_id(word_id: int) -&gt; Optional[Word]`
 
 根据 ID 获取单词。
 
@@ -1782,7 +1804,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_words_by_book_id(book_id: int) -> List[Word]`
+###### `get_words_by_book_id(book_id: int) -&gt; List[Word]`
 
 获取词书的所有单词。
 
@@ -1794,7 +1816,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_unstudied_words(book_id: int, limit: Optional[int] = None) -> List[Word]`
+###### `get_unstudied_words(book_id: int, limit: Optional[int] = None) -&gt; List[Word]`
 
 获取词书中未学习的单词。
 
@@ -1807,7 +1829,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_words_for_review(book_id: int, limit: Optional[int] = None) -> List[Word]`
+###### `get_words_for_review(book_id: int, limit: Optional[int] = None) -&gt; List[Word]`
 
 获取需要复习的单词（按权重排序）。
 
@@ -1820,7 +1842,7 @@ class RecitationDAL:
 
 ---
 
-###### `update_word(word: Word) -> bool`
+###### `update_word(word: Word) -&gt; bool`
 
 更新单词。
 
@@ -1832,7 +1854,7 @@ class RecitationDAL:
 
 ---
 
-###### `delete_word(word_id: int) -> bool`
+###### `delete_word(word_id: int) -&gt; bool`
 
 删除单词。
 
@@ -1844,7 +1866,7 @@ class RecitationDAL:
 
 ---
 
-###### `check_word_exists_in_book(book_id: int, word_text: str) -> bool`
+###### `check_word_exists_in_book(book_id: int, word_text: str) -&gt; bool`
 
 检查单词是否已存在于指定词书中。
 
@@ -1857,7 +1879,7 @@ class RecitationDAL:
 
 ---
 
-###### `search_words(search_text: str, book_id: Optional[int] = None) -> List[Word]`
+###### `search_words(search_text: str, book_id: Optional[int] = None) -&gt; List[Word]`
 
 搜索单词（支持模糊搜索单词和释义）。
 
@@ -1872,7 +1894,7 @@ class RecitationDAL:
 
 ##### 学习记录操作
 
-###### `add_user_study(user_study: UserStudy) -> Optional[UserStudy]`
+###### `add_user_study(user_study: UserStudy) -&gt; Optional[UserStudy]`
 
 添加学习记录。
 
@@ -1884,7 +1906,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_user_study_by_word_id(book_id: int, word_id: int) -> Optional[UserStudy]`
+###### `get_user_study_by_word_id(book_id: int, word_id: int) -&gt; Optional[UserStudy]`
 
 根据单词 ID 获取学习记录。
 
@@ -1897,7 +1919,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_user_studies_by_book_id(book_id: int) -> List[UserStudy]`
+###### `get_user_studies_by_book_id(book_id: int) -&gt; List[UserStudy]`
 
 获取词书的所有学习记录。
 
@@ -1909,7 +1931,7 @@ class RecitationDAL:
 
 ---
 
-###### `update_user_study(user_study: UserStudy) -> bool`
+###### `update_user_study(user_study: UserStudy) -&gt; bool`
 
 更新学习记录。
 
@@ -1921,7 +1943,7 @@ class RecitationDAL:
 
 ---
 
-###### `delete_user_study(user_study_id: int) -> bool`
+###### `delete_user_study(user_study_id: int) -&gt; bool`
 
 删除学习记录。
 
@@ -1935,7 +1957,7 @@ class RecitationDAL:
 
 ##### 进度统计
 
-###### `get_book_progress(book_id: int) -> dict`
+###### `get_book_progress(book_id: int) -&gt; dict`
 
 获取词书学习进度统计。
 
@@ -1953,7 +1975,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_book_detailed_stats(book_id: int) -> dict`
+###### `get_book_detailed_stats(book_id: int) -&gt; dict`
 
 获取词书的详细统计信息（用于删除确认）。
 
@@ -1982,7 +2004,7 @@ class BookService:
 
 **方法**:
 
-##### `import_book(file_path: str) -> Optional[Book]`
+##### `import_book(file_path: str) -&gt; Optional[Book]`
 
 从 JSON 文件导入词书。
 
@@ -1994,7 +2016,7 @@ class BookService:
 
 ---
 
-##### `get_all_books() -> List[Book]`
+##### `get_all_books() -&gt; List[Book]`
 
 获取所有词书。
 
@@ -2003,7 +2025,7 @@ class BookService:
 
 ---
 
-##### `get_book_with_progress(book_id: int) -> Optional[Dict]`
+##### `get_book_with_progress(book_id: int) -&gt; Optional[Dict]`
 
 获取词书及其进度信息。
 
@@ -2023,7 +2045,7 @@ class BookService:
 
 ---
 
-##### `get_all_books_with_progress() -> List[Dict]`
+##### `get_all_books_with_progress() -&gt; List[Dict]`
 
 获取所有词书及其进度信息。
 
@@ -2032,7 +2054,7 @@ class BookService:
 
 ---
 
-##### `select_book(book_id: int) -> bool`
+##### `select_book(book_id: int) -&gt; bool`
 
 选择当前学习的词书（保存到配置）。
 
@@ -2044,7 +2066,7 @@ class BookService:
 
 ---
 
-##### `get_current_book() -> Optional[Book]`
+##### `get_current_book() -&gt; Optional[Book]`
 
 获取当前选择的词书。
 
@@ -2053,7 +2075,7 @@ class BookService:
 
 ---
 
-##### `delete_book(book_id: int) -> bool`
+##### `delete_book(book_id: int) -&gt; bool`
 
 删除词书。
 
@@ -2078,7 +2100,7 @@ class StudyService:
 
 ##### 每日设置
 
-###### `get_daily_new_words() -> int`
+###### `get_daily_new_words() -&gt; int`
 
 获取每日新学单词数量（默认 20）。
 
@@ -2096,7 +2118,7 @@ class StudyService:
 
 ---
 
-###### `get_daily_review_words() -> int`
+###### `get_daily_review_words() -&gt; int`
 
 获取每日复习单词数量（默认 50）。
 
@@ -2116,7 +2138,7 @@ class StudyService:
 
 ##### 单词抽取
 
-###### `get_study_words(book_id: int, count: Optional[int] = None) -> List[Word]`
+###### `get_study_words(book_id: int, count: Optional[int] = None) -&gt; List[Word]`
 
 获取未学习的新单词（随机排序）。
 
@@ -2129,7 +2151,7 @@ class StudyService:
 
 ---
 
-###### `get_review_words(book_id: int, count: Optional[int] = None) -> List[Word]`
+###### `get_review_words(book_id: int, count: Optional[int] = None) -&gt; List[Word]`
 
 获取需要复习的单词（按权重排序）。
 
@@ -2142,7 +2164,7 @@ class StudyService:
 
 ---
 
-###### `get_today_words(book_id: int, force_refresh: bool = False) -> Tuple[List[Word], List[Word]]`
+###### `get_today_words(book_id: int, force_refresh: bool = False) -&gt; Tuple[List[Word], List[Word]]`
 
 获取今日学习和复习单词（智能缓存，每日自动刷新）。
 
@@ -2155,7 +2177,7 @@ class StudyService:
 
 ---
 
-###### `refresh_today_words(book_id: int) -> Tuple[List[Word], List[Word]]`
+###### `refresh_today_words(book_id: int) -&gt; Tuple[List[Word], List[Word]]`
 
 强制刷新今日单词（跳过本轮）。
 
@@ -2169,7 +2191,7 @@ class StudyService:
 
 ##### 学习进度
 
-###### `start_study_word(book_id: int, word_id: int) -> Optional[UserStudy]`
+###### `start_study_word(book_id: int, word_id: int) -&gt; Optional[UserStudy]`
 
 开始学习一个单词，初始化学习记录。
 
@@ -2182,7 +2204,7 @@ class StudyService:
 
 ---
 
-###### `review_word(book_id: int, word_id: int, is_correct: bool) -> Optional[UserStudy]`
+###### `review_word(book_id: int, word_id: int, is_correct: bool) -&gt; Optional[UserStudy]`
 
 复习一个单词，更新学习状态和下次复习时间。
 
@@ -2196,7 +2218,7 @@ class StudyService:
 
 ---
 
-###### `start_study_batch_words(book_id: int, word_ids: List[int]) -> List[Optional[UserStudy]]`
+###### `start_study_batch_words(book_id: int, word_ids: List[int]) -&gt; List[Optional[UserStudy]]`
 
 批量开始学习单词。
 
@@ -2209,7 +2231,7 @@ class StudyService:
 
 ---
 
-###### `review_batch_words(book_id: int, word_results: List[Tuple[int, bool]]) -> List[Optional[UserStudy]]`
+###### `review_batch_words(book_id: int, word_results: List[Tuple[int, bool]]) -&gt; List[Optional[UserStudy]]`
 
 批量复习单词。
 
@@ -2222,7 +2244,7 @@ class StudyService:
 
 ---
 
-###### `update_all_weights(book_id: int) -> int`
+###### `update_all_weights(book_id: int) -&gt; int`
 
 更新词书所有单词的权重。
 
@@ -2245,7 +2267,7 @@ class EbbinghausAlgorithm:
 
 **方法**:
 
-##### `calculate_initial_state() -> Tuple[int, float, datetime, datetime]`
+##### `calculate_initial_state() -&gt; Tuple[int, float, datetime, datetime]`
 
 计算初始学习状态。
 
@@ -2254,7 +2276,7 @@ class EbbinghausAlgorithm:
 
 ---
 
-##### `calculate_review_result(stage: int, weight: float, last_review: datetime, is_correct: bool) -> Tuple[int, float, datetime, datetime]`
+##### `calculate_review_result(stage: int, weight: float, last_review: datetime, is_correct: bool) -&gt; Tuple[int, float, datetime, datetime]`
 
 计算复习后的状态。
 
@@ -2269,7 +2291,7 @@ class EbbinghausAlgorithm:
 
 ---
 
-##### `update_weight_current(stage: int, last_review: datetime, next_review: datetime) -> float`
+##### `update_weight_current(stage: int, last_review: datetime, next_review: datetime) -&gt; float`
 
 更新当前时间点的权重。
 
@@ -2294,9 +2316,9 @@ class ArticleGenerator:
 
 **方法**:
 
-##### `format_article(article_text: str, new_words: List[Word], review_words: List[Word]) -> str`
+##### `format_article(article_text: str, new_words: List[Word], review_words: List[Word]) -&gt; str`
 
-格式化文章：给新学单词加下划线 (`<u>`)，给复习单词加粗 (`**`)。
+格式化文章：给新学单词加下划线 (`&lt;u&gt;`)，给复习单词加粗 (`**`)。
 
 **参数**:
 - `article_text`: 原始文章文本
@@ -2308,7 +2330,7 @@ class ArticleGenerator:
 
 ---
 
-##### `extract_title(article_text: str, max_length: int = 20) -> str`
+##### `extract_title(article_text: str, max_length: int = 20) -&gt; str`
 
 从文章第一句话提取标题。
 
@@ -2321,7 +2343,7 @@ class ArticleGenerator:
 
 ---
 
-##### `save_article(workspace_path: str, article_text: str, title: str) -> Tuple[bool, str]`
+##### `save_article(workspace_path: str, article_text: str, title: str) -&gt; Tuple[bool, str]`
 
 保存文章到工作区，按日期目录组织。
 
@@ -2335,7 +2357,7 @@ class ArticleGenerator:
 
 ---
 
-##### `create_words_summary(new_words: List[Word], review_words: List[Word]) -> str`
+##### `create_words_summary(new_words: List[Word], review_words: List[Word]) -&gt; str`
 
 创建单词汇总（Markdown 格式）。
 
@@ -2359,7 +2381,7 @@ class BookImporter:
 
 **方法**:
 
-##### `import_from_file(file_path: str) -> Tuple[Optional[Book], List[Word]]`
+##### `import_from_file(file_path: str) -&gt; Tuple[Optional[Book], List[Word]]`
 
 从 JSON 文件导入词书。
 
@@ -2371,21 +2393,53 @@ class BookImporter:
 
 ---
 
-### 背诵模式模块导入
+### 附录：配置文件格式
 
-```python
-from src.recitation import (
-    Book, Word, UserStudy,
-    PathManager, DatabaseManager, RecitationDAL,
-    BookService, StudyService,
-    EbbinghausAlgorithm, ArticleGenerator, BookImporter,
-    RecitationMainPage, QuizPage, RecitationSettingsPanel
-)
+#### settings.json
+
+```json
+{
+    "translation": {
+        "enabled": false,
+        "current_provider": "system_Ollama",
+        "ollama": {
+            "base_url": "http://localhost:11434",
+            "model": "qwen2.5:0.5b",
+            "timeout": 30
+        }
+    },
+    "theme": "light",
+    "window": { "width": 1200, "height": 800 },
+    "prompt_templates": {
+        "translation": "请翻译{input}",
+        "analysis": "解析{input}",
+        "scenery": "请完成一篇包含{input}的文章"
+    },
+    "custom_models": [],
+    "workspace": {
+        "current_path": "",
+        "current_file": ""
+    },
+    "reading": { "font_size": 12 }
+}
 ```
 
----
+#### .transnb 文件格式
 
-### 背诵模式配置文件格式 (studywordmode.json)
+```json
+{
+    "version": "1.0",
+    "cells": [
+        {
+            "type": "markdown",
+            "content": "源文本内容",
+            "output": "翻译结果内容"
+        }
+    ]
+}
+```
+
+#### 背诵模式配置文件格式 (studywordmode.json)
 
 ```json
 {
@@ -2402,7 +2456,7 @@ from src.recitation import (
 
 ---
 
-### 背诵模式数据库表结构
+### 附录：背诵模式数据库表结构
 
 #### book 表
 
@@ -2413,8 +2467,6 @@ from src.recitation import (
 | path | TEXT | 文件路径 |
 | count | INTEGER | 单词数量 |
 | create_time | TIMESTAMP | 创建时间 |
-
----
 
 #### word 表
 
@@ -2430,8 +2482,6 @@ from src.recitation import (
 
 索引:
 - `idx_word_book_id`: book_id
-
----
 
 #### user_study 表
 
@@ -2449,3 +2499,4 @@ from src.recitation import (
 - `idx_user_study_book_id`: book_id
 - `idx_user_study_word_id`: word_id
 - `idx_user_study_next_review`: next_review
+

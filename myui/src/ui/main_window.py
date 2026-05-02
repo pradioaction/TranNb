@@ -605,6 +605,7 @@ class MainWindow(QMainWindow):
     def open_settings(self):
         dialog = SettingsDialog(self.settings_manager, self.theme_manager, self)
         dialog.exec_()
+        self.translation_service.reload_from_settings()
         
     def show_about(self):
         QMessageBox.about(self, "关于", "翻译笔记本\n\n一个用于翻译的笔记本应用")

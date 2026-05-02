@@ -5,7 +5,7 @@ from .providers import (
     BaseTranslationProvider,
     ProviderType,
     OllamaTranslationProvider,
-    CustomOllamaProvider
+    build_custom_provider,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,10 +27,22 @@ class TranslationService:
         """设置设置管理器并应用配置"""
         self.settings_manager = settings_manager
         self._apply_settings()
+
+    def reload_from_settings(self):
+        """设置对话框保存后调用，使当前选用的 provider 与自定义模型立即生效（无需重启）。"""
+        self._apply_settings()
     
     def _build_provider_id(self, provider_type: str, name: str) -> str:
         """构建 provider_id"""
         return f"{provider_type}_{name}"
+
+    def _normalize_provider_id(self, provider_id: Optional[str]) -> Optional[str]:
+        """与设置/UI 旧数据对齐（曾写入 system_ollama，注册名为 system_Ollama）。"""
+        if not provider_id:
+            return None
+        if provider_id == "system_ollama":
+            return self._build_provider_id("system", "Ollama")
+        return provider_id
     
     def _parse_provider_id(self, provider_id: str) -> tuple:
         """解析 provider_id，返回 (type, name) 元组"""
@@ -53,12 +65,13 @@ class TranslationService:
         if ollama_provider:
             ollama_provider.update_config(ollama_settings)
         
-        # 设置当前 provider
-        current_provider_id = self.settings_manager.get_current_translation_provider()
-        if current_provider_id in self.providers:
-            self.current_provider_id = current_provider_id
+        # 若已是注册 ID（仅系统 provider 在自定义加载前有效），先对齐
+        raw_current = self.settings_manager.get_current_translation_provider()
+        normalized = self._normalize_provider_id(raw_current)
+        if normalized and normalized in self.providers:
+            self.current_provider_id = normalized
         
-        # 加载自定义模型
+        # 加载自定义模型（内部会按 settings 首选恢复当前 provider）
         custom_models = self.settings_manager.get_custom_models()
         self.load_custom_providers(custom_models)
     
@@ -88,18 +101,34 @@ class TranslationService:
     
     def get_provider(self, provider_id: Optional[str] = None) -> Optional[BaseTranslationProvider]:
         pid = provider_id or self.current_provider_id
+        if pid:
+            pid = self._normalize_provider_id(pid)
         return self.providers.get(pid)
     
     def set_current_provider(self, provider_id: str) -> bool:
-        if provider_id not in self.providers:
+        pid = self._normalize_provider_id(provider_id) or provider_id
+        if pid not in self.providers:
             logger.warning(f"Provider {provider_id} not found")
             return False
-        self.current_provider_id = provider_id
+        self.current_provider_id = pid
         logger.info(f"Set current provider to: {provider_id}")
         return True
     
     def get_current_provider(self) -> Optional[BaseTranslationProvider]:
         return self.get_provider()
+
+    def get_translation_timeout_seconds(self) -> int:
+        """当前选用模型的超时（秒），供 UI 线程 wait_for 使用；与 Provider 内 HTTP/SDK 超时对齐。"""
+        provider = self.get_current_provider()
+        if not provider:
+            return 120
+        raw = provider.config.get("timeout")
+        if raw is None:
+            return 120
+        try:
+            return max(15, min(600, int(raw)))
+        except (TypeError, ValueError):
+            return 120
     
     def list_providers(self) -> List[str]:
         return list(self.providers.keys())
@@ -111,12 +140,43 @@ class TranslationService:
         ]
     
     def load_custom_providers(self, custom_models: List[Dict[str, Any]]):
+        """用热重载替换所有自定义 Provider，避免配置更新后仍沿用旧实例。"""
+        saved_current = self.current_provider_id
+        for pid in list(self.providers.keys()):
+            if pid.startswith("custom_"):
+                self.unregister_provider(pid)
+
         for model in custom_models:
             name = model.get("name")
-            if name:
-                provider_id = self._build_provider_id("custom", name)
-                provider = CustomOllamaProvider(name, model)
-                self.register_provider(provider_id, provider)
+            if not name or not model.get("enabled", True):
+                continue
+            provider_id = self._build_provider_id("custom", name)
+            provider = build_custom_provider(name, model)
+            self.register_provider(provider_id, provider)
+
+        preferred = None
+        if self.settings_manager:
+            preferred = self._normalize_provider_id(
+                self.settings_manager.get_current_translation_provider()
+            )
+        saved_norm = self._normalize_provider_id(saved_current)
+
+        # 必须优先采用设置里的「默认翻译源」：saved_current 在启动时常仍为 system_Ollama
+        if preferred and preferred in self.providers:
+            self.current_provider_id = preferred
+            logger.info(f"当前翻译 provider（来自设置）: {preferred}")
+        elif saved_norm and saved_norm in self.providers:
+            self.current_provider_id = saved_norm
+        else:
+            fallback = self._build_provider_id("system", "Ollama")
+            if fallback in self.providers:
+                self.current_provider_id = fallback
+                if preferred:
+                    logger.warning(
+                        "设置的翻译 provider %s 未注册（名称是否与自定义模型一致、是否已勾选启用？），已回退到 %s",
+                        preferred,
+                        fallback,
+                    )
     
     def get_all_providers_info(self) -> Dict[str, Dict[str, Any]]:
         return {

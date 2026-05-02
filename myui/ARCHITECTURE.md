@@ -1,8 +1,9 @@
+
 # 翻译笔记本 软件架构文档
 
 ## 1. 项目概述
 
-翻译笔记本是一个基于 PyQt5 的桌面应用程序，用于管理和翻译文本内容，支持 Markdown 编辑、AI 翻译（通过 Ollama 本地模型）、工作区管理和文本导入功能。
+翻译笔记本是一个基于 PyQt5 的桌面应用程序，用于管理和翻译文本内容，支持 Markdown 编辑、AI 翻译（通过 Ollama 本地模型）、工作区管理和文本导入功能。此外，还包含完整的单词背诵和学习系统。
 
 ### 技术栈
 
@@ -28,8 +29,8 @@
     │   ├── WelcomePage (欢迎页)
     │   ├── SettingsDialog (设置对话框)
     │   └── 背诵模式 UI
-    │       ├── RecitationMainPage (背诵模式主页)
-    │       ├── QuizPage (测验页面)
+    │       ├── RecitationMainPage (背诵模式主页面)
+    │       ├── QuizPage (检测页面)
     │       └── RecitationSettingsPanel (背诵模式设置面板)
     ├── 业务逻辑层
     │   ├── TranslationService (翻译服务)
@@ -49,7 +50,12 @@
     ├── 翻译模块
     │   ├── BaseTranslationProvider (翻译提供者基类)
     │   ├── OllamaTranslationProvider (Ollama翻译)
-    │   └── TranslationWorker (翻译工作线程)
+    │   ├── CustomOllamaProvider (自定义Ollama提供者)
+    │   ├── TranslationWorker (翻译工作线程)
+    │   └── 翻译模式
+    │       ├── TranslationMode (翻译模式)
+    │       ├── ParseMode (解析模式)
+    │       └── SceneMode (场景模式)
     ├── 背诵模式模块
     │   ├── 数据模型
     │   │   ├── Book (词书)
@@ -60,8 +66,8 @@
     │   │   ├── BookImporter (词书导入)
     │   │   ├── ArticleGenerator (文章生成器)
     │   │   ├── EbbinghausAlgorithm (艾宾浩斯算法)
-    │   │   └── DownloadService (下载服务)
-    │   └── 工作线程 (workers)
+    │   │   ├── DownloadService (下载服务)
+    │   │   └── 工作线程 (workers.py)
     └── 工具层
         ├── ThemeManager (主题管理)
         ├── FileUtils (文件工具)
@@ -75,7 +81,7 @@
 | 表现层 (UI) | 用户界面展示和交互 | MainWindow, WelcomePage, SettingsDialog, RecitationMainPage, QuizPage |
 | 业务逻辑层 | 核心业务逻辑处理 | TranslationService, CellManager, FileService, WorkspaceManager, BookService, StudyService |
 | 数据层 | 数据持久化和管理 | SettingsManager, DatabaseManager, RecitationDAL |
-| 翻译层 | 翻译能力提供 | BaseTranslationProvider, OllamaTranslationProvider |
+| 翻译层 | 翻译能力提供 | BaseTranslationProvider, OllamaTranslationProvider, CustomOllamaProvider |
 | 背诵模式层 | 单词背诵和学习管理 | Book, Word, UserStudy, BookImporter, ArticleGenerator, EbbinghausAlgorithm |
 | 工具层 | 通用工具和辅助功能 | ThemeManager, FileUtils, SizeCalculator, PathManager |
 
@@ -111,11 +117,13 @@ def main():
 - 处理菜单、工具栏和状态栏
 - 协调文件打开、保存、翻译等操作
 - 支持文本导入功能
+- 管理背诵模式页面切换
 
 **核心组件**:
 - 文件浏览器 (QTreeView + FilteredFileModel)
-- 欢迎页/编辑器切换 (QStackedWidget)
+- 欢迎页/编辑器页面切换 (QStackedWidget)
 - 单元格容器 (QScrollArea + QVBoxLayout)
+- 背诵模式相关页面 (RecitationMainPage, QuizPage)
 
 **核心功能**:
 - `new_file()`: 新建 .transnb 文件
@@ -126,6 +134,9 @@ def main():
 - `translate_current_cell()` / `translate_all_cells()`: 翻译功能
 - `insert_cell_above/below()` / `delete_selected_cell()`: 单元格操作
 - `set_theme()`: 主题切换（浅色/深色）
+- `_open_recitation_mode()`: 打开背诵模式
+- `_on_generate_article_requested()`: 生成文章
+- `_on_start_quiz_requested()`: 开始检测
 
 **信号/槽**:
 - `file_opened` → 加载单元格并切换到编辑器
@@ -158,9 +169,9 @@ def main():
 ```python
 cells_data = [
     {
-        'type': 'markdown',
-        'content': '源文本',
-        'output': '翻译结果'
+        "type": "markdown",
+        "content": "源文本",
+        "output": "翻译结果"
     }
 ]
 ```
@@ -174,12 +185,15 @@ cells_data = [
 - 切换当前活动翻译提供者
 - 执行翻译请求
 - 管理翻译模式（解析模式、场景模式等）
+- 生成包含单词的场景文章
 
 **核心方法**:
+- `set_settings_manager(settings_manager)`: 设置配置管理器
 - `register_provider(provider_id, provider)`: 注册翻译提供者
 - `set_current_provider(provider_id)`: 设置当前活动提供者
 - `translate(text, prompt_template)`: 执行异步翻译
 - `load_custom_providers(custom_models)`: 加载自定义模型配置
+- `generate_scene_text(words, prompt_template)`: 生成场景文章
 
 **提供者类型**:
 - 系统提供者 (`system_*`)
@@ -221,6 +235,7 @@ cells_data = [
 - 获取工作区文件列表
 
 **核心方法**:
+- `load_workspace()`: 加载保存的工作区配置
 - `set_workspace(path, save)`: 设置工作区
 - `get_workspace()`: 获取当前工作区路径
 - `get_transnb_files(recursive)`: 获取工作区下的 .transnb 文件
@@ -258,7 +273,7 @@ cells_data = [
     "window": { "width": 1200, "height": 800 },
     "prompt_templates": {
         "translation": "请翻译{input}",
-        "analysis": "解析{input}...",
+        "analysis": "解析{input}",
         "scenery": "请完成一篇包含{input}的文章"
     },
     "custom_models": [],
@@ -274,6 +289,10 @@ cells_data = [
 - `get(key, default)`: 获取配置值
 - `set(key, value, auto_save)`: 设置配置值
 - `save()`: 保存配置到文件
+- `get_prompt_templates()` / `set_prompt_templates()`: 提示词模板管理
+- `get_custom_models()` / `set_custom_models()`: 自定义模型管理
+- `get_current_translation_provider()` / `set_current_translation_provider()`: 翻译提供者管理
+- `get_reading_font_size()` / `set_reading_font_size()`: 阅读字体大小管理
 
 ---
 
@@ -313,6 +332,14 @@ GET /api/tags  # 获取模型列表
 
 ---
 
+#### CustomOllamaProvider (src/translation/providers/ollama.py)
+
+**职责**:
+- 继承 OllamaTranslationProvider
+- 支持自定义配置的 Ollama 提供者
+
+---
+
 #### TranslationWorker (src/translation/translation_worker.py)
 
 **职责**:
@@ -322,7 +349,39 @@ GET /api/tags  # 获取模型列表
 
 ---
 
+#### 翻译模式 (src/translation/modes/)
+
+- `TranslationMode`: 翻译模式（预留接口）
+- `ParseMode`: 解析模式（预留接口）
+- `SceneMode`: 场景模式（预留接口）
+
+---
+
 ### 3.6 单元格模块 (src/cells/)
+
+#### BaseCell (src/cells/base_cell.py)
+
+**职责**:
+- 单元格基类，提供通用功能
+- 管理左侧操作按钮（翻译、上移、下移、删除）
+- 处理单元格选择状态
+- 提供主题支持
+
+**核心信号**:
+- `selected`: 单元格被选中
+- `translate_requested`: 请求翻译
+- `delete_requested`: 请求删除
+- `move_up_requested`: 请求上移
+- `move_down_requested`: 请求下移
+
+**核心方法**:
+- `set_translation_service(service)`: 设置翻译服务
+- `set_settings_manager(manager)`: 设置配置管理器
+- `set_selected(selected)`: 设置选中状态
+- `apply_theme(theme)`: 应用主题
+- `set_gutter_visible(visible)`: 控制左侧按钮区域显示
+
+---
 
 #### MarkdownCell (src/cells/markdown_cell.py)
 
@@ -331,13 +390,14 @@ GET /api/tags  # 获取模型列表
 - 支持编辑模式和阅读模式切换
 - 集成翻译功能
 - 自适应高度调整
+- 支持单元格折叠、原文折叠、译文折叠
 
 **核心组件**:
 - `MarkdownEditor`: 自定义的 Markdown 编辑器组件
   - 编辑模式 (Edit)
   - 阅读模式 (Read, 渲染 Markdown)
-- 源文本区 (Source)
-- 翻译结果区 (Translation)
+- `ClickableIndicatorLine`: 可点击的指示线（支持双击折叠）
+- `ClickableTextEdit`: 可双击切换模式的文本编辑器
 
 **核心方法**:
 - `translate()`: 执行翻译
@@ -345,6 +405,10 @@ GET /api/tags  # 获取模型列表
 - `set_output(content)`: 设置翻译结果
 - `adjust_height()`: 自适应调整高度
 - `apply_theme(theme)`: 应用主题
+- `toggle_cell_collapse()`: 切换单元格折叠
+- `toggle_input_collapse()`: 切换原文折叠
+- `toggle_output_collapse()`: 切换译文折叠
+- `_update_height_now()`: 立即更新高度（计算真实文档高度）
 
 ---
 
@@ -367,7 +431,8 @@ theme = {
     'markdown_background': '#fafafa',
     'border': '#cccccc',
     'output_border': '#dddddd',
-    'scroll_area': '#f5f5f5'
+    'scroll_area': '#f5f5f5',
+    'cell_selected': '#e8f4fd'
 }
 ```
 
@@ -432,6 +497,12 @@ theme = {
 - 启用外键约束，确保数据一致性
 - 提供数据库压缩功能
 
+**核心方法**:
+- `initialize()`: 初始化数据库
+- `vacuum()`: 压缩数据库
+- `is_initialized()`: 检查是否已初始化
+- `get_connection()`: 获取数据库连接上下文管理器
+
 ---
 
 #### 数据访问层 (src/recitation/dal.py)
@@ -455,6 +526,14 @@ theme = {
 - 配置文件: `studywordmode.json`
 - 提供路径合法性检查和目录创建功能
 
+**核心方法**:
+- `set_workspace(path)`: 设置工作区
+- `get_workspace()`: 获取工作区
+- `get_data_dir()`: 获取数据目录
+- `get_db_path()`: 获取数据库路径
+- `ensure_data_dir()`: 确保数据目录存在
+- `is_valid()`: 检查是否有效
+
 ---
 
 #### 词书管理服务 (src/recitation/book_service.py)
@@ -464,6 +543,15 @@ theme = {
 - 词书管理: 获取所有词书、删除词书
 - 词书选择: 记录当前选择的词书到配置
 - 进度展示: 获取词书及其学习进度
+
+**核心方法**:
+- `import_book(file_path)`: 导入词书
+- `get_all_books()`: 获取所有词书
+- `get_book_with_progress(book_id)`: 获取带进度的词书
+- `get_all_books_with_progress()`: 获取所有带进度的词书
+- `select_book(book_id)`: 选择词书
+- `get_current_book()`: 获取当前选择的词书
+- `delete_book(book_id)`: 删除词书
 
 ---
 
@@ -479,6 +567,19 @@ theme = {
   - `start_study_word`: 开始学习一个单词，初始化学习记录
   - `review_word`: 复习一个单词，更新学习状态和下次复习时间
 - 批量操作: 支持批量开始学习和批量复习
+
+**核心方法**:
+- `get_daily_new_words()` / `set_daily_new_words(count)`: 每日新学数量
+- `get_daily_review_words()` / `set_daily_review_words(count)`: 每日复习数量
+- `get_study_words(book_id, count)`: 获取新学单词
+- `get_review_words(book_id, count)`: 获取复习单词
+- `get_today_words(book_id, force_refresh)`: 获取今日单词
+- `refresh_today_words(book_id)`: 刷新今日单词
+- `start_study_word(book_id, word_id)`: 开始学习单词
+- `review_word(book_id, word_id, is_correct)`: 复习单词
+- `start_study_batch_words(book_id, word_ids)`: 批量开始学习
+- `review_batch_words(book_id, word_results)`: 批量复习
+- `update_all_weights(book_id)`: 更新所有单词权重
 
 ---
 
@@ -500,15 +601,26 @@ theme = {
   - 答错: 阶段 -1，间隔缩短
 - 权重计算: 使用指数衰减算法，接近下次复习时间时权重增加
 
+**核心方法**:
+- `calculate_initial_state()`: 计算初始学习状态
+- `calculate_review_result(stage, weight, last_review, is_correct)`: 计算复习后的状态
+- `update_weight_current(stage, last_review, next_review)`: 更新当前权重
+
 ---
 
 #### 文章生成器 (src/recitation/article_generator.py)
 
 **ArticleGenerator**:
-- 格式化文章: 给新学单词加下划线 (`<u>`)，给复习单词加粗 (`**`)
+- 格式化文章: 给新学单词加下划线 (`&lt;u&gt;`)，给复习单词加粗 (`**`)
 - 提取标题: 从文章第一句话自动提取标题
 - 保存文章: 按日期目录组织，保存为 `.transnb` 格式
 - 单词汇总: 生成 Markdown 格式的单词汇总（可选）
+
+**核心方法**:
+- `format_article(article_text, new_words, review_words)`: 格式化文章
+- `extract_title(article_text, max_length)`: 提取标题
+- `save_article(workspace_path, article_text, title)`: 保存文章
+- `create_words_summary(new_words, review_words)`: 创建单词汇总
 
 ---
 
@@ -520,25 +632,15 @@ theme = {
 - 提取字段: 单词、音标、释义、例句
 - 保留原始数据供后续扩展
 
+**核心方法**:
+- `import_from_file(file_path)`: 从文件导入词书
+
 ---
 
-#### 背诵模式 UI (src/recitation/ui/)
+#### 下载服务 (src/recitation/download_service.py)
 
-**RecitationMainPage**:
-- 背诵模式主界面
-- 显示词书列表和学习进度
-- 提供词书导入、选择、删除功能
-- 展示今日新学和复习单词
-- 支持生成文章和开始测验
-
-**QuizPage**:
-- 单词测验界面
-- 展示单词并让用户自测
-- 记录测验结果
-
-**RecitationSettingsPanel**:
-- 背诵模式设置面板
-- 调整每日新学和复习单词数量
+**DownloadService**:
+- （预留接口）下载词书功能
 
 ---
 
@@ -569,6 +671,26 @@ theme = {
 - StartStudyBatchWordsWorker: 批量开始学习
 - ReviewBatchWordsWorker: 批量复习
 - UpdateAllWeightsWorker: 更新所有单词权重
+
+---
+
+#### 背诵模式 UI (src/recitation/ui/)
+
+**RecitationMainPage**:
+- 背诵模式主界面
+- 显示词书列表和学习进度
+- 提供词书导入、选择、删除功能
+- 展示今日新学和复习单词
+- 支持生成文章和开始检测
+
+**QuizPage**:
+- 单词检测界面
+- 展示单词并让用户自测
+- 记录检测结果
+
+**RecitationSettingsPanel**:
+- 背诵模式设置面板
+- 调整每日新学和复习单词数量
 
 ---
 
@@ -795,6 +917,12 @@ FileService.open_file()
 1. 在 `ThemeManager` 中添加新主题配置
 2. 更新 `SettingsManager` 中的默认设置
 
+### 5.4 新增背诵模式功能
+
+1. 在 `StudyService` 中添加新的学习算法
+2. 在 `RecitationMainPage` 中添加 UI
+3. 更新 `EbbinghausAlgorithm` 以支持新功能
+
 ---
 
 ## 6. 依赖关系
@@ -805,6 +933,7 @@ MainWindow
 ├── ThemeManager
 ├── TranslationService
 │   ├── OllamaTranslationProvider
+│   ├── CustomOllamaProvider
 │   └── (其他 Providers)
 ├── WorkspaceManager
 ├── FileService
@@ -847,6 +976,8 @@ myui/
 ├── main.py                          # 应用入口
 ├── requirements.txt                 # 依赖列表
 ├── settings.json                    # 配置文件
+├── ARCHITECTURE.md                  # 架构文档（本文件）
+├── API.md                           # API 接口文档
 ├── test.transnb                     # 示例文件
 └── src/
     ├── __init__.py
@@ -864,15 +995,15 @@ myui/
     │   └── welcome_page.py          # 欢迎页
     ├── translation/                 # 翻译模块
     │   ├── __init__.py
-    │   ├── base_engine.py
-    │   ├── model_manager.py
+    │   ├── base_engine.py           # 基础引擎
+    │   ├── model_manager.py         # 模型管理器
     │   ├── translation_service.py   # 翻译服务
     │   ├── translation_worker.py    # 翻译工作线程
     │   ├── modes/                   # 翻译模式
     │   │   ├── __init__.py
-    │   │   ├── parse_mode.py
-    │   │   ├── scene_mode.py
-    │   │   └── translation_mode.py
+    │   │   ├── parse_mode.py        # 解析模式
+    │   │   ├── scene_mode.py        # 场景模式
+    │   │   └── translation_mode.py  # 翻译模式
     │   └── providers/               # 翻译提供者
     │       ├── __init__.py
     │       ├── base.py              # 基类
@@ -897,11 +1028,12 @@ myui/
     │   ├── article_generator.py     # 文章生成器
     │   ├── book_importer.py         # 词书导入器
     │   ├── download_service.py      # 下载服务
+    │   ├── utils.py                 # 工具函数
     │   ├── workers.py               # 后台工作线程
     │   └── ui/                      # 背诵模式 UI
     │       ├── __init__.py
-    │       ├── recitation_main_page.py   # 背诵模式主页
-    │       ├── quiz_page.py               # 测验页面
+    │       ├── recitation_main_page.py   # 背诵模式主页面
+    │       ├── quiz_page.py               # 检测页面
     │       ├── dialogs.py                 # 对话框
     │       └── recitation_settings_panel.py # 设置面板
     └── utils/                       # 工具模块
@@ -910,3 +1042,4 @@ myui/
         ├── size_calculator.py       # 尺寸计算
         └── theme_manager.py         # 主题管理
 ```
+

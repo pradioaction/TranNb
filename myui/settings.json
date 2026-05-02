@@ -1,80 +1,16 @@
 {
     "translation": {
-        "enabled": false,
-        "current_provider": "system_ollama",
+        "enabled": true,
+        "current_provider": "custom_doubao-seed-1-6-flash-250828",
         "ollama": {
-            "base_url": "http://127.0.0.1:11434",
+            "base_url": "http://localhost:11434",
             "model": "qwen:7b",
-            "timeout": 30
+            "timeout": 59
         },
         "openai": {
             "api_key": "",
             "base_url": "https://api.openai.com/v1",
             "model": "gpt-3.5-turbo"
-        },
-        "service": "local",
-        "google": {
-            "name": "谷歌翻译",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 26,
-            "proxy": ""
-        },
-        "microsoft": {
-            "name": "微软翻译",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "deepl": {
-            "name": "DeepL",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "qwen": {
-            "name": "通义千问",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "ernie": {
-            "name": "文心一言",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "gpt": {
-            "name": "GPT",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
-        },
-        "local": {
-            "name": "本地模型 API",
-            "enabled": false,
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
-            "proxy": ""
         }
     },
     "theme": "light",
@@ -84,41 +20,52 @@
     },
     "prompt_templates": {
         "translation": "请翻译{input}",
-        "analysis": "解析{input}\n根据输入文本的长度自动切换分析深度：若输入为一句话（无句号或仅有一个完整主谓结构），则进行逐词逐句的雅思式深度分析，解析重难点单词，固定搭配，句式结构，整体翻译；若输入为一段话（含≥2个完整主谓结构），则仅提供整体翻译，不做额外解析。",
-        "scenery": "Please write an text that includes {input}"
+        "analysis": "解析{input}\\n根据输入文本的长度自动切换分析深度：若输入为一句话（无句号或仅有一个完整主谓结构），则进行逐词逐句的雅思式深度分析，解析重难点单词，固定搭配，句式结构，整体翻译；若输入为一段话（含≥2个完整主谓结构），则仅提供整体翻译，不做额外解析。",
+        "scenery": "Please write an article that includes {input}"
     },
     "custom_models": [
         {
-            "name": "modletest",
-            "api_key": "",
-            "endpoint": "",
-            "model": "",
-            "timeout": 30,
+            "name": "doubao-seed-2-0-pro-260215",
+            "backend": "ark",
+            "api_key": "ark-3fa510f0-a4c3-4fcf-aaa7-4da37003223e-348f0",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-2-0-pro-260215",
+            "timeout": 60,
             "proxy": "",
             "enabled": true
         },
         {
-            "api_key": "",
-            "enabled": false,
-            "endpoint": "",
-            "model": "",
-            "name": "shaya",
+            "name": "doubao-seed-2-0-lite-260215",
+            "backend": "ark",
+            "api_key": "ark-3fa510f0-a4c3-4fcf-aaa7-4da37003223e-348f0",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-2-0-lite-260215",
+            "timeout": 60,
             "proxy": "",
-            "timeout": 30
+            "enabled": true
+        },
+        {
+            "name": "doubao-seed-1-6-flash-250828",
+            "backend": "ark",
+            "api_key": "ark-3fa510f0-a4c3-4fcf-aaa7-4da37003223e-348f0",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-1-6-flash-250828",
+            "timeout": 60,
+            "proxy": "",
+            "enabled": true
         }
     ],
     "workspace": {
         "current_path": "C:\\Users\\Pradio\\Downloads\\test",
         "recent_files": [],
         "cell_states": {},
-        "current_file": "C:\\Users\\Pradio\\Downloads\\test\\260502\\In today's fast-pace....transnb",
-        "file_browser_path": "G:/program/QSDReader-All/newappsdediter/myui"
+        "current_file": "C:\\Users\\Pradio\\Downloads\\test\\test.transnb"
     },
     "reading": {
-        "font_size": 15
+        "font_size": 12
     },
     "recitation": {
-        "daily_new_words": 20,
+        "daily_new_words": 30,
         "daily_review_words": 50
     }
 }
