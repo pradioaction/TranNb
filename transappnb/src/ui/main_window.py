@@ -73,7 +73,7 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("翻译笔记本")
+        self.setWindowTitle("TransNb")
         self.setGeometry(100, 100, 1200, 800)
         # 设置窗口图标
         icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logob.png')
