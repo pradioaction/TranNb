@@ -74,7 +74,7 @@ class FileService(QObject):
             
             file_path = str(Path(workspace) / normalized_filename)
             
-            # 先关闭当前文件
+            # 先关闭当前文件（自动保存已修改的内容）
             if self._current_file:
                 self.close_file(emit_signal=False)
             
@@ -116,7 +116,7 @@ class FileService(QObject):
             
             file_path = str(Path(workspace) / normalized_filename)
             
-            # 先关闭当前文件
+            # 先关闭当前文件（自动保存已修改的内容）
             if self._current_file:
                 self.close_file(emit_signal=False)
             
@@ -189,7 +189,7 @@ class FileService(QObject):
                 self.error_occurred.emit("仅支持 .transnb 格式文件")
                 return False
             
-            # 先关闭当前文件
+            # 先关闭当前文件（自动保存已修改的内容）
             if self._current_file:
                 self.close_file(emit_signal=False)
             
@@ -371,14 +371,19 @@ class FileService(QObject):
             self.error_occurred.emit(f"删除文件失败: {str(e)}")
             return False
     
-    def close_file(self, emit_signal: bool = True):
+    def close_file(self, emit_signal: bool = True, auto_save: bool = True):
         """
         关闭当前文件
         
         Args:
             emit_signal: 是否发出 file_closed 信号
+            auto_save: 是否在关闭前自动保存已修改的文件
         """
         if self._current_file:
+            # 如果文件已修改且允许自动保存，则先保存
+            if auto_save and self._modified:
+                self.save_file()
+            
             old_file = self._current_file
             self._current_file = None
             self._modified = False

@@ -1,9 +1,8 @@
-
 # 翻译笔记本 软件架构文档
 
 ## 1. 项目概述
 
-翻译笔记本是一个基于 PyQt5 的桌面应用程序，用于管理和翻译文本内容，支持 Markdown 编辑、AI 翻译（通过 Ollama 本地模型、火山引擎方舟）、工作区管理和文本导入功能。此外，还包含完整的单词背诵和学习系统。
+翻译笔记本是一个基于 PyQt5 的桌面应用程序，用于管理和翻译文本内容，支持 Markdown 编辑、AI 翻译（通过 Ollama 本地模型、火山引擎方舟、OpenAI 兼容接口）、工作区管理和文本导入功能。此外，还包含完整的单词背诵和学习系统。
 
 ### 技术栈
 
@@ -25,13 +24,22 @@
 ├── 主入口 (main.py)
 └── 核心模块 (src/)
     ├── UI 层
-    │   ├── MainWindow (主窗口)
+    │   ├── MainWindow (主窗口 - 模块化设计)
+    │   │   ├── main_window.py (核心协调)
+    │   │   ├── main_window_ui.py (UI 组件)
+    │   │   ├── main_window_menus.py (菜单)
+    │   │   ├── main_window_actions.py (动作)
+    │   │   ├── main_window_file_ops.py (文件操作)
+    │   │   ├── main_window_workers.py (后台工作线程)
+    │   │   └── main_window_recitation.py (背诵模式)
     │   ├── WelcomePage (欢迎页)
     │   ├── SettingsDialog (设置对话框)
+    │   ├── TextEditorDialog (文本编辑器对话框)
     │   └── 背诵模式 UI
     │       ├── RecitationMainPage (背诵模式主页面)
     │       ├── QuizPage (检测页面)
-    │       └── RecitationSettingsPanel (背诵模式设置面板)
+    │       ├── RecitationSettingsPanel (背诵模式设置面板)
+    │       └── Dialogs (对话框)
     ├── 业务逻辑层
     │   ├── TranslationService (翻译服务)
     │   ├── CellManager (单元格管理器)
@@ -44,21 +52,39 @@
     │   ├── SettingsManager (设置管理器)
     │   ├── BaseCell (单元格基类)
     │   ├── MarkdownCell (Markdown单元格)
-    │   └── 背诵模式数据层
+    │   └── 背诵模式数据层 (模块化 DAL)
     │       ├── DatabaseManager (数据库管理)
-    │       └── RecitationDAL (数据访问层)
+    │       ├── BookDAL (词书数据访问)
+    │       ├── WordDAL (单词数据访问)
+    │       ├── UserStudyDAL (学习记录数据访问)
+    │       └── StatDAL (统计数据访问)
     ├── 翻译模块
     │   ├── BaseTranslationProvider (翻译提供者基类)
     │   ├── OllamaTranslationProvider (Ollama翻译)
+    │   ├── OpenAITranslationProvider (OpenAI兼容翻译)
     │   ├── CustomOllamaProvider (自定义Ollama提供者)
     │   ├── CustomArkProvider (火山引擎方舟提供者)
     │   ├── build_custom_provider (自定义提供者工厂)
     │   ├── TranslationWorker (翻译工作线程)
     │   ├── ModelManager (模型管理器)
+    │   ├── APIKeyResolver (API密钥解析器)
     │   └── 翻译模式
     │       ├── TranslationMode (翻译模式)
     │       ├── ParseMode (解析模式)
     │       └── SceneMode (场景模式)
+    ├── 单元格模块
+    │   ├── BaseCell (基类)
+    │   ├── MarkdownCell (Markdown 单元格)
+    │   ├── CellManager (单元格管理器)
+    │   ├── CellFactory (单元格工厂)
+    │   ├── CellNode (单元格节点)
+    │   ├── CellConfig (单元格配置)
+    │   ├── CellSignalManager (信号管理器)
+    │   ├── CellHeightCalculator (高度计算器)
+    │   └── Widgets (单元格组件)
+    │       ├── MarkdownEditor (Markdown编辑器)
+    │       ├── ClickableTextEdit (可点击文本编辑)
+    │       └── ClickableIndicator (可点击指示器)
     ├── 背诵模式模块
     │   ├── 数据模型
     │   │   ├── Book (词书)
@@ -70,7 +96,12 @@
     │   │   ├── ArticleGenerator (文章生成器)
     │   │   ├── EbbinghausAlgorithm (艾宾浩斯算法)
     │   │   ├── DownloadService (下载服务)
-    │   │   └── 工作线程 (workers.py)
+    │   │   └── Workers (后台工作线程)
+    │   └── DAL 模块
+    │       ├── BookDAL
+    │       ├── WordDAL
+    │       ├── UserStudyDAL
+    │       └── StatDAL
     └── 工具层
         ├── ThemeManager (主题管理)
         ├── FileUtils (文件工具)
@@ -82,10 +113,10 @@
 
 | 层次 | 职责 | 主要类 |
 |------|------|--------|
-| 表现层 (UI) | 用户界面展示和交互 | MainWindow, WelcomePage, SettingsDialog, RecitationMainPage, QuizPage |
+| 表现层 (UI) | 用户界面展示和交互 | MainWindow (模块化), WelcomePage, SettingsDialog, RecitationMainPage, QuizPage |
 | 业务逻辑层 | 核心业务逻辑处理 | TranslationService, CellManager, FileService, WorkspaceManager, BookService, StudyService |
-| 数据层 | 数据持久化和管理 | SettingsManager, DatabaseManager, RecitationDAL |
-| 翻译层 | 翻译能力提供 | BaseTranslationProvider, OllamaTranslationProvider, CustomOllamaProvider, CustomArkProvider, build_custom_provider |
+| 数据层 | 数据持久化和管理 | SettingsManager, DatabaseManager, BookDAL, WordDAL, UserStudyDAL, StatDAL |
+| 翻译层 | 翻译能力提供 | BaseTranslationProvider, OllamaTranslationProvider, OpenAITranslationProvider, CustomOllamaProvider, CustomArkProvider, build_custom_provider |
 | 背诵模式层 | 单词背诵和学习管理 | Book, Word, UserStudy, BookImporter, ArticleGenerator, EbbinghausAlgorithm |
 | 工具层 | 通用工具和辅助功能 | ThemeManager, FileUtils, SizeCalculator, PathManager |
 
@@ -113,7 +144,17 @@ def main():
 
 ### 3.2 UI 层 (src/ui/)
 
-#### MainWindow (src/ui/main_window.py)
+#### MainWindow 模块化设计
+
+MainWindow 采用模块化设计，将功能拆分为多个文件：
+
+- **main_window.py**: 核心协调类，整合所有模块
+- **main_window_ui.py**: UI 组件初始化和布局
+- **main_window_menus.py**: 菜单和工具栏定义
+- **main_window_actions.py**: 动作定义和连接
+- **main_window_file_ops.py**: 文件操作处理
+- **main_window_workers.py**: 后台工作线程管理
+- **main_window_recitation.py**: 背诵模式集成
 
 **职责**:
 - 应用主窗口，协调各模块交互
@@ -128,24 +169,6 @@ def main():
 - 欢迎页/编辑器页面切换 (QStackedWidget)
 - 单元格容器 (QScrollArea + QVBoxLayout)
 - 背诵模式相关页面 (RecitationMainPage, QuizPage)
-
-**核心功能**:
-- `new_file()`: 新建 .transnb 文件
-- `open_file()`: 打开已有文件
-- `open_folder()`: 打开文件夹作为工作区
-- `import_text()`: 导入文本文件并自动分割为段落
-- `save_file()` / `save_file_as()`: 保存文件
-- `translate_current_cell()` / `translate_all_cells()`: 翻译功能
-- `insert_cell_above/below()` / `delete_selected_cell()`: 单元格操作
-- `set_theme()`: 主题切换（浅色/深色）
-- `_open_recitation_mode()`: 打开背诵模式
-- `_on_generate_article_requested()`: 生成文章
-- `_on_start_quiz_requested()`: 开始检测
-
-**信号/槽**:
-- `file_opened` → 加载单元格并切换到编辑器
-- `file_saved` → 更新状态和窗口标题
-- `cell_content_changed` → 标记文件已修改
 
 ---
 
@@ -169,18 +192,23 @@ def main():
 - `load_from_file(file_path)`: 从 JSON 文件加载单元格
 - `load_from_text_content(content)`: 从文本内容加载单元格（自动按段落分割）
 
-**数据结构**:
-```python
-cells_data = [
-    {
-        "type": "markdown",
-        "content": "源文本",
-        "output": "翻译结果"
-    }
-]
-```
+#### CellFactory (src/cells/cell_factory.py)
 
----
+**职责**:
+- 工厂模式创建单元格
+- 支持不同类型的单元格创建
+
+#### CellSignalManager (src/cells/cell_signal_manager.py)
+
+**职责**:
+- 管理单元格间的信号通信
+- 协调信号连接和断开
+
+#### CellHeightCalculator (src/cells/cell_height_calculator.py)
+
+**职责**:
+- 计算单元格的合适高度
+- 支持自适应高度调整
 
 #### TranslationService (src/translation/translation_service.py)
 
@@ -208,8 +236,6 @@ cells_data = [
 - 系统提供者 (`system_*`)
 - 自定义提供者 (`custom_*`)
 
----
-
 #### ModelManager (src/translation/model_manager.py)
 
 **职责**:
@@ -226,8 +252,6 @@ cells_data = [
 - `set_current_model(model_name)`: 设置当前活动模型
 - `list_models()` / `list_enabled_models()`: 列出模型
 - `load_models(models_list)` / `export_models()`: 批量加载/导出模型
-
----
 
 #### FileService (src/workspace/file_service.py)
 
@@ -253,8 +277,6 @@ cells_data = [
 - `file_closed()`: 文件已关闭
 - `error_occurred(str)`: 错误发生
 
----
-
 #### WorkspaceManager (src/workspace/workspace_manager.py)
 
 **职责**:
@@ -275,7 +297,7 @@ cells_data = [
 
 ---
 
-### 3.4 数据层 (src/settingmanager/)
+### 3.4 数据层 (src/)
 
 #### SettingsManager (src/settingmanager/settings_manager.py)
 
@@ -366,6 +388,30 @@ GET /api/tags  # 获取模型列表
 
 ---
 
+#### OpenAITranslationProvider (src/translation/providers/openai_provider.py)
+
+**职责**:
+- 实现基于 OpenAI 兼容 Chat Completions 的翻译
+- 支持从环境变量解析 API 密钥
+- 支持自定义 base_url 和模型
+- 支持代理配置
+
+**API 调用**:
+```
+POST /chat/completions
+{
+    "model": "gpt-3.5-turbo",
+    "messages": [{"role": "user", "content": "..."}]
+}
+```
+
+**密钥解析**:
+- 支持从环境变量读取密钥（默认 OPENAI_API_KEY）
+- 支持自定义环境变量名配置
+- 通过 APIKeyResolver 统一管理密钥解析
+
+---
+
 #### CustomOllamaProvider (src/translation/providers/ollama.py)
 
 **职责**:
@@ -380,7 +426,7 @@ GET /api/tags  # 获取模型列表
 - 实现基于火山引擎方舟（VolcEngine Ark）的翻译
 - 支持 OpenAI 兼容的 Chat API
 - 使用官方 Ark Runtime SDK
-- 支持从环境变量 `ARK_API_KEY` 读取 API Key
+- 支持从环境变量读取 API Key
 
 **API 调用**:
 使用 `volcenginesdkarkruntime.Ark` 官方 SDK 调用 `/api/v3/chat/completions` 接口
@@ -393,6 +439,18 @@ GET /api/tags  # 获取模型列表
 
 ---
 
+#### APIKeyResolver (src/translation/providers/api_key_resolve.py)
+
+**职责**:
+- 统一的 API 密钥解析器
+- 支持从环境变量读取密钥
+- 支持配置自定义环境变量名
+
+**核心函数**:
+- `resolve_openai_api_key(config)`: 解析 OpenAI 兼容的 API 密钥
+
+---
+
 #### build_custom_provider (src/translation/providers/custom_factory.py)
 
 **职责**:
@@ -400,6 +458,7 @@ GET /api/tags  # 获取模型列表
 - 目前支持的后端:
   - `ollama`: 默认，构建 `CustomOllamaProvider`
   - `ark`: 构建 `CustomArkProvider`
+  - `openai`: 构建基于 OpenAI 兼容的自定义提供者
 - 避免 TranslationService 内部堆积分支逻辑
 
 ---
@@ -461,18 +520,26 @@ GET /api/tags  # 获取模型列表
   - 编辑模式 (Edit)
   - 阅读模式 (Read, 渲染 Markdown)
 - `ClickableIndicatorLine`: 可点击的指示线（支持双击折叠）
-- `ClickableTextEdit`: 可双击切换模式的文本编辑器
+- `ClickableTextEdit`: 可双击切换模式的文本编辑
 
 **核心方法**:
 - `translate()`: 执行翻译
 - `set_content(content)`: 设置源文本
 - `set_output(content)`: 设置翻译结果
-- `adjust_height()`: 自适应调整高度
+- `adjust_height()`: 自适应高度调整
 - `apply_theme(theme)`: 应用主题
 - `toggle_cell_collapse()`: 切换单元格折叠
 - `toggle_input_collapse()`: 切换原文折叠
 - `toggle_output_collapse()`: 切换译文折叠
 - `_update_height_now()`: 立即更新高度（计算真实文档高度）
+
+---
+
+#### 单元格组件 Widgets (src/cells/widgets/)
+
+- `MarkdownEditor`: Markdown 编辑器，支持编辑/阅读模式切换
+- `ClickableTextEdit`: 可点击的文本编辑器
+- `ClickableIndicator`: 可点击的指示器
 
 ---
 
@@ -537,7 +604,7 @@ theme = {
 
 ### 3.8 背诵模式模块 (src/recitation/)
 
-背诵模式是一个完整的单词学习和记忆系统，采用艾宾浩斯遗忘曲线算法来优化学习效果。
+背诵模式是一个完整的单词学习和记忆系统，采用艾宾浩斯遗忘曲线算法来优化学习效果。数据访问层采用模块化设计，拆分为多个专门的 DAL 类。
 
 ---
 
@@ -576,15 +643,30 @@ theme = {
 
 ---
 
-#### 数据访问层 (src/recitation/dal.py)
+#### 模块化数据访问层 (src/recitation/dal/)
 
-**RecitationDAL**:
-- 提供完整的 CRUD 操作
-- 词书操作: add_book, get_book_by_id, get_all_books, update_book, delete_book
-- 单词操作: add_word, add_words_batch, get_word_by_id, get_words_by_book_id, get_unstudied_words, get_words_for_review, delete_word
-- 学习记录操作: add_user_study, get_user_study_by_word_id, update_user_study, delete_user_study
-- 进度统计: get_book_progress, get_book_detailed_stats
-- 搜索功能: search_words
+背诵模式采用模块化 DAL 设计，将数据访问拆分为多个专门的类，提高代码可维护性：
+
+**BookDAL (src/recitation/dal/book_dal.py)**:
+- 词书数据访问
+- 负责词书的增删改查操作
+
+**WordDAL (src/recitation/dal/word_dal.py)**:
+- 单词数据访问
+- 负责单词的增删改查、搜索等操作
+
+**UserStudyDAL (src/recitation/dal/user_study_dal.py)**:
+- 学习记录数据访问
+- 负责学习记录的增删改查操作
+
+**StatDAL (src/recitation/dal/stat_dal.py)**:
+- 统计数据访问
+- `get_book_progress(book_id)`: 获取词书学习进度统计
+- `get_book_detailed_stats(book_id)`: 获取词书的详细统计信息
+
+**向后兼容**:
+- 保留 `RecitationDAL` 作为统一入口
+- 通过 `__getattr__` 机制支持旧代码导入
 
 ---
 
@@ -763,6 +845,9 @@ theme = {
 - 背诵模式设置面板
 - 调整每日新学和复习单词数量
 
+**Dialogs**:
+- 背诵模式相关对话框
+
 ---
 
 ## 4. 数据流程
@@ -782,7 +867,7 @@ TranslationService.translate(text, prompt_template)
     ↓
 获取当前 TranslationProvider
     ↓
-[OllamaTranslationProvider|CustomOllamaProvider|CustomArkProvider].translate()
+[OllamaTranslationProvider|OpenAITranslationProvider|CustomOllamaProvider|CustomArkProvider].translate()
     ↓
 发送请求到对应 API
     ↓
@@ -873,9 +958,9 @@ BookImporter.import_from_file()
     ↓
 提取单词、音标、释义、例句
     ↓
-RecitationDAL.add_book() - 保存词书
+BookDAL.add_book() - 保存词书
     ↓
-RecitationDAL.add_words_batch() - 批量保存单词
+WordDAL.add_words_batch() - 批量保存单词
     ↓
 刷新词书列表
 ```
@@ -905,7 +990,7 @@ EbbinghausAlgorithm.calculate_initial_state()
     ↓
 设置阶段=0，下次复习=5分钟后
     ↓
-更新 user_study 表
+UserStudyDAL.add_user_study() - 更新 user_study 表
 ```
 
 ### 4.7 背诵模式 - 复习流程
@@ -927,7 +1012,7 @@ EbbinghausAlgorithm.calculate_review_result()
     ↓
 计算新的复习间隔和权重
     ↓
-RecitationDAL.update_user_study()
+UserStudyDAL.update_user_study()
     ↓
 更新学习记录
 ```
@@ -982,7 +1067,8 @@ FileService.open_file()
 
 1. 继承 `BaseCell`
 2. 实现自定义 UI 和逻辑
-3. 在 `CellManager` 中添加创建逻辑
+3. 在 `CellFactory` 中添加创建逻辑
+4. 在 `CellManager` 中添加对应处理
 
 ### 5.3 新增主题
 
@@ -991,9 +1077,10 @@ FileService.open_file()
 
 ### 5.4 新增背诵模式功能
 
-1. 在 `StudyService` 中添加新的学习算法
-2. 在 `RecitationMainPage` 中添加 UI
-3. 更新 `EbbinghausAlgorithm` 以支持新功能
+1. 在对应的 DAL 类中添加数据访问方法（BookDAL/WordDAL/UserStudyDAL/StatDAL）
+2. 在 `StudyService` 或 `BookService` 中添加业务逻辑
+3. 在 `RecitationMainPage` 中添加 UI
+4. 更新 `Workers` 以支持后台操作（如需要）
 
 ---
 
@@ -1005,9 +1092,11 @@ MainWindow
 ├── ThemeManager
 ├── TranslationService
 │   ├── OllamaTranslationProvider
+│   ├── OpenAITranslationProvider
 │   ├── CustomOllamaProvider
 │   ├── CustomArkProvider
 │   ├── build_custom_provider (工厂)
+│   ├── APIKeyResolver (密钥解析)
 │   └── ModelManager
 ├── WorkspaceManager
 ├── FileService
@@ -1015,22 +1104,31 @@ MainWindow
 ├── CellManager
 │   ├── MarkdownCell
 │   │   ├── BaseCell
-│   │   ├── MarkdownEditor
+│   │   ├── MarkdownEditor (Widget)
+│   │   ├── ClickableTextEdit (Widget)
+│   │   ├── ClickableIndicator (Widget)
 │   │   ├── TranslationWorker
 │   │   └── TranslationService
+│   ├── CellFactory
+│   ├── CellSignalManager
+│   ├── CellHeightCalculator
 │   └── TranslationService
 └── 背诵模式
     ├── PathManager (路径管理)
     ├── DatabaseManager (数据库管理)
     │   └── PathManager
-    ├── RecitationDAL (数据访问层)
-    │   └── DatabaseManager
+    ├── DAL 模块
+    │   ├── BookDAL
+    │   ├── WordDAL
+    │   ├── UserStudyDAL
+    │   └── StatDAL
     ├── BookService (词书服务)
-    │   ├── RecitationDAL
+    │   ├── BookDAL
     │   ├── PathManager
     │   └── BookImporter (词书导入)
     ├── StudyService (学习服务)
-    │   ├── RecitationDAL
+    │   ├── UserStudyDAL
+    │   ├── WordDAL
     │   ├── PathManager
     │   └── EbbinghausAlgorithm (艾宾浩斯算法)
     ├── ArticleGenerator (文章生成器)
@@ -1046,31 +1144,62 @@ MainWindow
 ## 7. 目录结构
 
 ```
-myui/
+transnb/
 ├── main.py                          # 应用入口
 ├── requirements.txt                 # 依赖列表
 ├── settings.json                    # 配置文件
+├── README.md                        # 项目说明
 ├── ARCHITECTURE.md                  # 架构文档（本文件）
 ├── API.md                           # API 接口文档
-├── 单元格.md                         # 单元格文档
-├── test_ollama_api.py               # Ollama API 测试
-├── test_chat_api.py                 # Chat API 测试
-├── check_db.py                      # 数据库检查
-├── check_db2.py                     # 数据库检查 2
+├── 单元格.md                        # 单元格文档
+├── TODO.md                          # 待办事项
+├── cells_example.json               # 单元格示例
+├── check_db.py                      # 数据库检查工具
+├── check_db2.py                     # 数据库检查工具 2
+├── check_ollama.py                  # Ollama 检查工具
+├── debug_dialog.py                  # 调试对话框
+├── transnb.bat                      # Windows 启动脚本
+├── transnb.lnk                      # Windows 快捷方式
+├── logo.png                         # Logo
+├── logob.png                        # Logo（深色）
 └── src/
     ├── __init__.py
-    ├── ui/                          # UI 层
+    ├── ui/                          # UI 层（模块化设计）
     │   ├── __init__.py
-    │   └── main_window.py           # 主窗口
+    │   ├── main_window.py           # 主窗口（核心协调）
+    │   ├── main_window_ui.py        # UI 组件
+    │   ├── main_window_menus.py     # 菜单
+    │   ├── main_window_actions.py   # 动作
+    │   ├── main_window_file_ops.py  # 文件操作
+    │   ├── main_window_workers.py   # 后台线程
+    │   └── main_window_recitation.py # 背诵模式集成
     ├── cells/                       # 单元格模块
     │   ├── __init__.py
     │   ├── base_cell.py             # 单元格基类
     │   ├── cell_manager.py          # 单元格管理器
-    │   └── markdown_cell.py         # Markdown 单元格
+    │   ├── markdown_cell.py         # Markdown 单元格
+    │   ├── cell_factory.py          # 单元格工厂
+    │   ├── cell_node.py             # 单元格节点
+    │   ├── cell_config.py           # 单元格配置
+    │   ├── cell_signal_manager.py   # 信号管理器
+    │   ├── cell_height_calculator.py # 高度计算器
+    │   └── widgets/                 # 单元格组件
+    │       ├── __init__.py
+    │       ├── markdown_editor.py   # Markdown 编辑器
+    │       ├── clickable_text_edit.py # 可点击文本编辑
+    │       └── clickable_indicator.py # 可点击指示器
     ├── components/                  # UI 组件
     │   ├── __init__.py
     │   ├── settings_dialog.py       # 设置对话框
-    │   └── welcome_page.py          # 欢迎页
+    │   ├── settings_workers.py      # 设置工作线程
+    │   ├── welcome_page.py          # 欢迎页
+    │   ├── text_editor_dialog.py    # 文本编辑器对话框
+    │   └── settings_panels/         # 设置面板
+    │       ├── __init__.py
+    │       ├── general_panels.py    # 通用面板
+    │       ├── translation_widgets.py # 翻译设置
+    │       ├── model_widgets.py     # 模型设置
+    │       └── env_widgets.py       # 环境设置
     ├── translation/                 # 翻译模块
     │   ├── __init__.py
     │   ├── base_engine.py           # 基础引擎
@@ -1087,6 +1216,8 @@ myui/
     │       ├── base.py              # 基类
     │       ├── ollama.py            # Ollama 实现
     │       ├── ark.py               # 火山引擎方舟实现
+    │       ├── openai_provider.py   # OpenAI 兼容实现
+    │       ├── api_key_resolve.py   # API 密钥解析
     │       └── custom_factory.py    # 自定义提供者工厂
     ├── workspace/                   # 工作区模块
     │   ├── __init__.py
@@ -1101,7 +1232,14 @@ myui/
     │   ├── models.py                # 数据模型 (Book, Word, UserStudy)
     │   ├── path_manager.py          # 路径管理
     │   ├── database.py              # 数据库管理
-    │   ├── dal.py                   # 数据访问层 (RecitationDAL)
+    │   ├── dal.py                   # 统一 DAL 入口（向后兼容）
+    │   ├── recitation_dal.py        # 旧版 DAL（向后兼容）
+    │   ├── dal/                     # 模块化 DAL（新设计）
+    │   │   ├── __init__.py
+    │   │   ├── book_dal.py          # 词书 DAL
+    │   │   ├── word_dal.py          # 单词 DAL
+    │   │   ├── user_study_dal.py    # 学习记录 DAL
+    │   │   └── stat_dal.py          # 统计 DAL
     │   ├── book_service.py          # 词书服务
     │   ├── study_service.py         # 学习服务
     │   ├── ebbinghaus.py            # 艾宾浩斯算法
@@ -1123,3 +1261,65 @@ myui/
         ├── theme_manager.py         # 主题管理
         └── message_box_theme.py     # 消息框主题
 ```
+
+---
+
+## 8. 设计模式
+
+项目中使用的设计模式：
+
+| 模式 | 应用位置 | 说明 |
+|------|---------|------|
+| **工厂模式** | CellFactory, build_custom_provider | 创建单元格和翻译提供者 |
+| **策略模式** | TranslationProvider 及其子类 | 不同翻译提供者的统一接口 |
+| **MVC 模式** | MainWindow, CellManager, DAL 层 | UI、业务逻辑、数据分离 |
+| **观察者模式** | Qt 信号/槽机制 | 组件间通信 |
+| **单例模式** | SettingsManager, ThemeManager | 全局唯一实例 |
+| **仓储模式** | DAL 模块 (BookDAL, WordDAL 等) | 数据访问抽象 |
+| **模块化模式** | MainWindow 拆分, DAL 拆分 | 代码组织和可维护性 |
+
+---
+
+## 9. 关键技术决策
+
+### 9.1 MainWindow 模块化拆分
+
+**决策**: 将 MainWindow 拆分为多个文件
+- **原因**: 单一文件过大，难以维护
+- **优势**: 代码组织清晰，职责分离，易于协作开发
+- **文件**: main_window.py, main_window_ui.py, main_window_menus.py, main_window_actions.py, main_window_file_ops.py, main_window_workers.py, main_window_recitation.py
+
+### 9.2 DAL 模块化设计
+
+**决策**: 将 RecitationDAL 拆分为多个专门的 DAL 类
+- **原因**: 单一 DAL 类职责过多，代码冗长
+- **优势**: 每个 DAL 类职责单一，易于测试和维护
+- **类**: BookDAL, WordDAL, UserStudyDAL, StatDAL
+- **向后兼容**: 保留 RecitationDAL 作为统一入口
+
+### 9.3 OpenAI 兼容支持
+
+**决策**: 添加 OpenAITranslationProvider 支持 OpenAI 兼容接口
+- **原因**: 扩展翻译服务支持范围
+- **实现**: 独立的 Provider 类，通过 APIKeyResolver 解析密钥
+- **优势**: 支持自定义 base_url、模型、代理配置
+
+---
+
+## 10. 性能考虑
+
+- **后台线程**: 所有耗时操作（翻译、数据库操作、文件 IO）都在后台线程执行，避免阻塞 UI
+- **连接池**: httpx 客户端复用连接
+- **数据库优化**: 使用索引、外键约束、定期 vacuum
+- **缓存策略**: 今日单词缓存，避免重复计算
+- **自适应高度**: 按需计算单元格高度，避免过度渲染
+
+---
+
+## 11. 安全考虑
+
+- **API 密钥**: 仅从环境变量读取，不存储在配置文件中
+- **数据库**: 使用 SQLite，工作区隔离，不跨工作区访问
+- **文件操作**: 验证路径在工作区内，防止目录遍历
+- **输入验证**: 对用户输入进行适当的验证和转义
+

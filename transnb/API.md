@@ -1331,6 +1331,65 @@ class OllamaTranslationProvider(BaseTranslationProvider):
 
 ---
 
+### OpenAITranslationProvider
+
+#### 类定义
+
+```python
+class OpenAITranslationProvider(BaseTranslationProvider):
+    def __init__(self)
+```
+
+#### 默认配置
+
+```python
+{
+    "base_url": "https://api.openai.com/v1",
+    "model": "gpt-3.5-turbo",
+    "timeout": 60,
+    "proxy": "",
+    "api_key_env": "OPENAI_API_KEY"
+}
+```
+
+#### 方法
+
+##### `async translate(text: str, prompt_template: str = "", **kwargs) -&gt; str`
+
+执行翻译（实现基类抽象方法）。
+
+**API**:
+- `POST /chat/completions`
+- 请求体: `{"model": "...", "messages": [...]}`
+
+---
+
+##### `test_connection() -&gt; bool`
+
+测试 OpenAI 兼容服务连接。
+
+**返回值**:
+- `bool`: 连接是否成功
+
+---
+
+##### `get_info() -&gt; Dict[str, Any]`
+
+获取提供者信息。
+
+**返回值**:
+```python
+{
+    "name": "OpenAI",
+    "type": "system",
+    "backend": "openai",
+    "base_url": "...",
+    "model": "..."
+}
+```
+
+---
+
 ### CustomOllamaProvider
 
 #### 类定义
@@ -1373,8 +1432,7 @@ class CustomArkProvider(BaseTranslationProvider):
 执行翻译（实现基类抽象方法）。
 
 **API**:
-- 使用 volcenginesdkarkruntime.Ark SDK
-- 调用 Chat completions API
+- 使用 volcenginesdkarkruntime.Ark SDK 调用 `/api/v3/chat/completions`
 
 ---
 
@@ -1414,6 +1472,29 @@ class ProviderType(Enum):
 
 ---
 
+### APIKeyResolver (API 密钥解析器)
+
+#### 核心函数
+
+##### `resolve_openai_api_key(config: Dict[str, Any]) -&gt; Optional[str]`
+
+解析 OpenAI 兼容的 API 密钥。
+
+**参数**:
+- `config` (Dict): 提供者配置，支持 `api_key_env` 指定环境变量名
+
+**返回值**:
+- `str | None`: API 密钥或 None
+
+**配置示例**:
+```python
+{
+    "api_key_env": "MY_CUSTOM_KEY"  # 优先使用此环境变量
+}
+```
+
+---
+
 ### build_custom_provider (工厂函数)
 
 #### 函数定义
@@ -1434,6 +1515,7 @@ def build_custom_provider(name: str, model: Dict[str, Any]) -&gt; BaseTranslatio
 **支持的 backend**:
 - `ollama`: 构建 CustomOllamaProvider（默认）
 - `ark`: 构建 CustomArkProvider
+- `openai`: 构建 OpenAI 兼容的自定义提供者
 
 ---
 
@@ -1608,9 +1690,9 @@ class MarkdownCell(BaseCell):
 
 ---
 
-#### MarkdownEditor (内部组件)
+#### 单元格组件 Widgets
 
-##### 类定义
+##### MarkdownEditor
 
 ```python
 class MarkdownEditor(QWidget):
@@ -1618,59 +1700,101 @@ class MarkdownEditor(QWidget):
     needs_height_update = Signal()
 ```
 
-##### 方法
+**方法**:
+- `set_content(content: str)`: 设置内容
+- `get_content() -&gt; str`: 获取内容
+- `update_reading()`: 更新阅读模式渲染
+- `switch_to_edit_mode()`: 切换到编辑模式
+- `switch_to_reading_mode()`: 切换到阅读模式
+- `apply_theme(theme: Dict[str, str])`: 应用主题
+- `set_settings_manager(settings_manager)`: 设置配置管理器
 
-###### `set_content(content: str)`
+##### ClickableIndicator
 
-设置内容。
+可点击的指示线组件。
 
-**参数**:
-- `content` (str): 内容
+##### ClickableTextEdit
+
+可双击切换模式的文本编辑器组件。
 
 ---
 
-###### `get_content() -&gt; str`
+### CellFactory (单元格工厂)
 
-获取内容。
+#### 类定义
+
+```python
+class CellFactory:
+    @staticmethod
+    def create_cell(cell_type: str, **kwargs) -&gt; BaseCell
+```
+
+#### 方法
+
+##### `create_cell(cell_type: str, **kwargs) -&gt; BaseCell`
+
+创建单元格。
+
+**参数**:
+- `cell_type` (str): 单元格类型（"markdown"）
+- `**kwargs`: 其他参数
 
 **返回值**:
-- `str`: 内容
+- `BaseCell`: 单元格实例
 
 ---
 
-###### `update_reading()`
+### CellSignalManager (信号管理器)
 
-更新阅读模式渲染。
+#### 类定义
 
----
+```python
+class CellSignalManager:
+    def __init__(self, cell_manager: CellManager)
+```
 
-###### `switch_to_edit_mode()`
+#### 方法
 
-切换到编辑模式。
+##### `connect_cell_signals(cell: BaseCell)`
 
----
-
-###### `switch_to_reading_mode()`
-
-切换到阅读模式。
-
----
-
-###### `apply_theme(theme: Dict[str, str])`
-
-应用主题。
+连接单元格信号。
 
 **参数**:
-- `theme` (Dict): 主题配置
+- `cell` (BaseCell): 单元格实例
 
 ---
 
-###### `set_settings_manager(settings_manager)`
+##### `disconnect_cell_signals(cell: BaseCell)`
 
-设置配置管理器。
+断开单元格信号。
 
 **参数**:
-- `settings_manager` (SettingsManager): 配置管理器实例
+- `cell` (BaseCell): 单元格实例
+
+---
+
+### CellHeightCalculator (高度计算器)
+
+#### 类定义
+
+```python
+class CellHeightCalculator:
+    @staticmethod
+    def calculate_height(text: str, font_size: int = 12) -&gt; int
+```
+
+#### 方法
+
+##### `calculate_height(text: str, font_size: int = 12) -&gt; int`
+
+计算文本内容所需的高度。
+
+**参数**:
+- `text` (str): 文本内容
+- `font_size` (int, optional): 字体大小，默认 12
+
+**返回值**:
+- `int`: 计算后的高度（像素）
 
 ---
 
@@ -1718,15 +1842,15 @@ class ThemeManager(QObject):
 
 ```python
 {
-    'foreground': '#000000',
-    'background': '#f5f5f5',
-    'editor_background': '#ffffff',
-    'editor_foreground': '#000000',
-    'markdown_background': '#fafafa',
-    'border': '#cccccc',
-    'output_border': '#dddddd',
-    'scroll_area': '#f5f5f5',
-    'cell_selected': '#e8f4fd'
+    "foreground": "#000000",
+    "background": "#f5f5f5",
+    "editor_background": "#ffffff",
+    "editor_foreground": "#000000",
+    "markdown_background": "#fafafa",
+    "border": "#cccccc",
+    "output_border": "#dddddd",
+    "scroll_area": "#f5f5f5",
+    "cell_selected": "#e8f4fd"
 }
 ```
 
@@ -1734,15 +1858,15 @@ class ThemeManager(QObject):
 
 ```python
 {
-    'foreground': '#ffffff',
-    'background': '#1e1e1e',
-    'editor_background': '#2d2d2d',
-    'editor_foreground': '#ffffff',
-    'markdown_background': '#252526',
-    'border': '#3c3c3c',
-    'output_border': '#333333',
-    'scroll_area': '#1e1e1e',
-    'cell_selected': '#1e3a5f'
+    "foreground": "#ffffff",
+    "background": "#1e1e1e",
+    "editor_background": "#2d2d2d",
+    "editor_foreground": "#ffffff",
+    "markdown_background": "#252526",
+    "border": "#3c3c3c",
+    "output_border": "#333333",
+    "scroll_area": "#1e1e1e",
+    "cell_selected": "#1e3a5f"
 }
 ```
 
@@ -1754,7 +1878,7 @@ class ThemeManager(QObject):
 
 #### `TRANSNB_EXTENSION`
 
-翻译笔记本文件扩展名，值为 `'.transnb'`。
+翻译笔记本文件扩展名，值为 `".transnb"`。
 
 ---
 
@@ -2022,20 +2146,20 @@ with db_manager.get_connection() as conn:
 
 ---
 
-### 数据访问层 (src/recitation/dal.py)
+### 模块化数据访问层 (src/recitation/dal/)
 
-#### RecitationDAL
+背诵模式采用模块化 DAL 设计，将数据访问拆分为多个专门的类。
+
+#### BookDAL (词书数据访问)
 
 ```python
-class RecitationDAL:
+class BookDAL:
     def __init__(self, db_manager: DatabaseManager)
 ```
 
 **方法**:
 
-##### 词书操作
-
-###### `add_book(book: Book) -&gt; Optional[Book]`
+##### `add_book(book: Book) -&gt; Optional[Book]`
 
 添加词书。
 
@@ -2047,7 +2171,19 @@ class RecitationDAL:
 
 ---
 
-###### `get_book_by_id(book_id: int) -&gt; Optional[Book]`
+##### `refresh_book_count(book_id: int) -&gt; bool`
+
+重新同步词书数量（从 word 表实际统计）。
+
+**参数**:
+- `book_id`: 词书 ID
+
+**返回值**:
+- 是否成功
+
+---
+
+##### `get_book_by_id(book_id: int) -&gt; Optional[Book]`
 
 根据 ID 获取词书。
 
@@ -2059,7 +2195,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_all_books() -&gt; List[Book]`
+##### `get_all_books() -&gt; List[Book]`
 
 获取所有词书。
 
@@ -2068,7 +2204,7 @@ class RecitationDAL:
 
 ---
 
-###### `update_book(book: Book) -&gt; bool`
+##### `update_book(book: Book) -&gt; bool`
 
 更新词书。
 
@@ -2080,7 +2216,7 @@ class RecitationDAL:
 
 ---
 
-###### `delete_book(book_id: int) -&gt; bool`
+##### `delete_book(book_id: int) -&gt; bool`
 
 删除词书（级联删除相关单词和学习记录）。
 
@@ -2092,9 +2228,16 @@ class RecitationDAL:
 
 ---
 
-##### 单词操作
+#### WordDAL (单词数据访问)
 
-###### `add_word(word: Word) -&gt; Optional[Word]`
+```python
+class WordDAL:
+    def __init__(self, db_manager: DatabaseManager)
+```
+
+**方法**:
+
+##### `add_word(word: Word) -&gt; Optional[Word]`
 
 添加单词。
 
@@ -2106,7 +2249,7 @@ class RecitationDAL:
 
 ---
 
-###### `add_words_batch(words: List[Word]) -&gt; int`
+##### `add_words_batch(words: List[Word]) -&gt; int`
 
 批量添加单词。
 
@@ -2118,7 +2261,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_word_by_id(word_id: int) -&gt; Optional[Word]`
+##### `get_word_by_id(word_id: int) -&gt; Optional[Word]`
 
 根据 ID 获取单词。
 
@@ -2130,7 +2273,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_words_by_book_id(book_id: int) -&gt; List[Word]`
+##### `get_words_by_book_id(book_id: int) -&gt; List[Word]`
 
 获取词书的所有单词。
 
@@ -2142,9 +2285,9 @@ class RecitationDAL:
 
 ---
 
-###### `get_unstudied_words(book_id: int, limit: Optional[int] = None) -&gt; List[Word]`
+##### `get_unstudied_words(book_id: int, limit: Optional[int] = None) -&gt; List[Word]`
 
-获取词书中未学习的单词。
+获取词书中未学习的单词（随机排序）。
 
 **参数**:
 - `book_id`: 词书 ID
@@ -2155,7 +2298,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_words_for_review(book_id: int, limit: Optional[int] = None) -&gt; List[Word]`
+##### `get_words_for_review(book_id: int, limit: Optional[int] = None) -&gt; List[Word]`
 
 获取需要复习的单词（按权重排序）。
 
@@ -2168,7 +2311,7 @@ class RecitationDAL:
 
 ---
 
-###### `update_word(word: Word) -&gt; bool`
+##### `update_word(word: Word) -&gt; bool`
 
 更新单词。
 
@@ -2180,7 +2323,7 @@ class RecitationDAL:
 
 ---
 
-###### `delete_word(word_id: int) -&gt; bool`
+##### `delete_word(word_id: int) -&gt; bool`
 
 删除单词。
 
@@ -2192,7 +2335,7 @@ class RecitationDAL:
 
 ---
 
-###### `check_word_exists_in_book(book_id: int, word_text: str) -&gt; bool`
+##### `check_word_exists_in_book(book_id: int, word_text: str) -&gt; bool`
 
 检查单词是否已存在于指定词书中。
 
@@ -2205,7 +2348,7 @@ class RecitationDAL:
 
 ---
 
-###### `search_words(search_text: str, book_id: Optional[int] = None) -&gt; List[Word]`
+##### `search_words(search_text: str, book_id: Optional[int] = None) -&gt; List[Word]`
 
 搜索单词（支持模糊搜索单词和释义）。
 
@@ -2218,9 +2361,29 @@ class RecitationDAL:
 
 ---
 
-##### 学习记录操作
+##### `search_word_exact_lower(word_text: str, book_id: Optional[int] = None) -&gt; Optional[Word]`
 
-###### `add_user_study(user_study: UserStudy) -&gt; Optional[UserStudy]`
+全小写精确搜索单词（在所有词书或指定词书中）。
+
+**参数**:
+- `word_text`: 单词文本
+- `book_id`: 可选，限定搜索的词书 ID
+
+**返回值**:
+- 单词对象或 None
+
+---
+
+#### UserStudyDAL (学习记录数据访问)
+
+```python
+class UserStudyDAL:
+    def __init__(self, db_manager: DatabaseManager)
+```
+
+**方法**:
+
+##### `add_user_study(user_study: UserStudy) -&gt; Optional[UserStudy]`
 
 添加学习记录。
 
@@ -2232,7 +2395,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_user_study_by_word_id(book_id: int, word_id: int) -&gt; Optional[UserStudy]`
+##### `get_user_study_by_word_id(book_id: int, word_id: int) -&gt; Optional[UserStudy]`
 
 根据单词 ID 获取学习记录。
 
@@ -2245,7 +2408,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_user_studies_by_book_id(book_id: int) -&gt; List[UserStudy]`
+##### `get_user_studies_by_book_id(book_id: int) -&gt; List[UserStudy]`
 
 获取词书的所有学习记录。
 
@@ -2257,7 +2420,7 @@ class RecitationDAL:
 
 ---
 
-###### `update_user_study(user_study: UserStudy) -&gt; bool`
+##### `update_user_study(user_study: UserStudy) -&gt; bool`
 
 更新学习记录。
 
@@ -2269,7 +2432,7 @@ class RecitationDAL:
 
 ---
 
-###### `delete_user_study(user_study_id: int) -&gt; bool`
+##### `delete_user_study(user_study_id: int) -&gt; bool`
 
 删除学习记录。
 
@@ -2281,9 +2444,16 @@ class RecitationDAL:
 
 ---
 
-##### 进度统计
+#### StatDAL (统计数据访问)
 
-###### `get_book_progress(book_id: int) -&gt; dict`
+```python
+class StatDAL:
+    def __init__(self, db_manager: DatabaseManager)
+```
+
+**方法**:
+
+##### `get_book_progress(book_id: int) -&gt; Dict[str, Any]`
 
 获取词书学习进度统计。
 
@@ -2301,7 +2471,7 @@ class RecitationDAL:
 
 ---
 
-###### `get_book_detailed_stats(book_id: int) -&gt; dict`
+##### `get_book_detailed_stats(book_id: int) -&gt; Dict[str, Any]`
 
 获取词书的详细统计信息（用于删除确认）。
 
@@ -2316,6 +2486,17 @@ class RecitationDAL:
     "study_count": 50
 }
 ```
+
+---
+
+#### RecitationDAL (统一 DAL 入口，向后兼容)
+
+```python
+class RecitationDAL:
+    def __init__(self, db_manager: DatabaseManager)
+```
+
+**方法**: 包含 BookDAL、WordDAL、UserStudyDAL、StatDAL 的所有方法，作为统一接口。
 
 ---
 
@@ -2351,7 +2532,7 @@ class BookService:
 
 ---
 
-##### `get_book_with_progress(book_id: int) -&gt; Optional[Dict]`
+##### `get_book_with_progress(book_id: int) -&gt; Optional[Dict[str, Any]]`
 
 获取词书及其进度信息。
 
@@ -2371,7 +2552,7 @@ class BookService:
 
 ---
 
-##### `get_all_books_with_progress() -&gt; List[Dict]`
+##### `get_all_books_with_progress() -&gt; List[Dict[str, Any]]`
 
 获取所有词书及其进度信息。
 
@@ -2424,9 +2605,7 @@ class StudyService:
 
 **方法**:
 
-##### 每日设置
-
-###### `get_daily_new_words() -&gt; int`
+##### `get_daily_new_words() -&gt; int`
 
 获取每日新学单词数量（默认 20）。
 
@@ -2435,7 +2614,7 @@ class StudyService:
 
 ---
 
-###### `set_daily_new_words(count: int)`
+##### `set_daily_new_words(count: int)`
 
 设置每日新学单词数量。
 
@@ -2444,7 +2623,7 @@ class StudyService:
 
 ---
 
-###### `get_daily_review_words() -&gt; int`
+##### `get_daily_review_words() -&gt; int`
 
 获取每日复习单词数量（默认 50）。
 
@@ -2453,7 +2632,7 @@ class StudyService:
 
 ---
 
-###### `set_daily_review_words(count: int)`
+##### `set_daily_review_words(count: int)`
 
 设置每日复习单词数量。
 
@@ -2462,9 +2641,7 @@ class StudyService:
 
 ---
 
-##### 单词抽取
-
-###### `get_study_words(book_id: int, count: Optional[int] = None) -&gt; List[Word]`
+##### `get_study_words(book_id: int, count: Optional[int] = None) -&gt; List[Word]`
 
 获取未学习的新单词（随机排序）。
 
@@ -2477,7 +2654,7 @@ class StudyService:
 
 ---
 
-###### `get_review_words(book_id: int, count: Optional[int] = None) -&gt; List[Word]`
+##### `get_review_words(book_id: int, count: Optional[int] = None) -&gt; List[Word]`
 
 获取需要复习的单词（按权重排序）。
 
@@ -2490,7 +2667,7 @@ class StudyService:
 
 ---
 
-###### `get_today_words(book_id: int, force_refresh: bool = False) -&gt; Tuple[List[Word], List[Word]]`
+##### `get_today_words(book_id: int, force_refresh: bool = False) -&gt; Tuple[List[Word], List[Word]]`
 
 获取今日学习和复习单词（智能缓存，每日自动刷新）。
 
@@ -2503,7 +2680,7 @@ class StudyService:
 
 ---
 
-###### `refresh_today_words(book_id: int) -&gt; Tuple[List[Word], List[Word]]`
+##### `refresh_today_words(book_id: int) -&gt; Tuple[List[Word], List[Word]]`
 
 强制刷新今日单词（跳过本轮）。
 
@@ -2515,9 +2692,7 @@ class StudyService:
 
 ---
 
-##### 学习进度
-
-###### `start_study_word(book_id: int, word_id: int) -&gt; Optional[UserStudy]`
+##### `start_study_word(book_id: int, word_id: int) -&gt; Optional[UserStudy]`
 
 开始学习一个单词，初始化学习记录。
 
@@ -2530,7 +2705,7 @@ class StudyService:
 
 ---
 
-###### `review_word(book_id: int, word_id: int, is_correct: bool) -&gt; Optional[UserStudy]`
+##### `review_word(book_id: int, word_id: int, is_correct: bool) -&gt; Optional[UserStudy]`
 
 复习一个单词，更新学习状态和下次复习时间。
 
@@ -2544,7 +2719,7 @@ class StudyService:
 
 ---
 
-###### `start_study_batch_words(book_id: int, word_ids: List[int]) -&gt; List[Optional[UserStudy]]`
+##### `start_study_batch_words(book_id: int, word_ids: List[int]) -&gt; List[Optional[UserStudy]]`
 
 批量开始学习单词。
 
@@ -2557,7 +2732,7 @@ class StudyService:
 
 ---
 
-###### `review_batch_words(book_id: int, word_results: List[Tuple[int, bool]]) -&gt; List[Optional[UserStudy]]`
+##### `review_batch_words(book_id: int, word_results: List[Tuple[int, bool]]) -&gt; List[Optional[UserStudy]]`
 
 批量复习单词。
 
@@ -2570,7 +2745,7 @@ class StudyService:
 
 ---
 
-###### `update_all_weights(book_id: int) -&gt; int`
+##### `update_all_weights(book_id: int) -&gt; int`
 
 更新词书所有单词的权重。
 
@@ -2631,6 +2806,19 @@ class EbbinghausAlgorithm:
 
 ---
 
+**遗忘曲线阶段间隔**:
+- 阶段 0: 5 分钟
+- 阶段 1: 30 分钟
+- 阶段 2: 12 小时
+- 阶段 3: 1 天
+- 阶段 4: 2 天
+- 阶段 5: 4 天
+- 阶段 6: 7 天
+- 阶段 7: 15 天
+- 阶段 8: 30 天
+
+---
+
 ### 文章生成器 (src/recitation/article_generator.py)
 
 #### ArticleGenerator
@@ -2644,7 +2832,7 @@ class ArticleGenerator:
 
 ##### `format_article(article_text: str, new_words: List[Word], review_words: List[Word]) -&gt; str`
 
-格式化文章：给新学单词加下划线 (`&lt;u&gt;`)，给复习单词加粗 (`**`)。
+格式化文章：给新学单词加下划线（`<u>`），给复习单词加粗（`**`）。
 
 **参数**:
 - `article_text`: 原始文章文本
@@ -2716,6 +2904,35 @@ class BookImporter:
 
 **返回值**:
 - `(book, words)` 元组，失败返回 `(None, [])`
+
+---
+
+### 背诵模式 UI (src/recitation/ui/)
+
+#### RecitationMainPage
+
+背诵模式主界面。
+
+**主要功能**:
+- 显示词书列表和学习进度
+- 提供词书导入、选择、删除功能
+- 展示今日新学和复习单词
+- 支持生成文章和开始检测
+
+#### QuizPage
+
+单词检测界面。
+
+**主要功能**:
+- 展示单词并让用户自测
+- 记录检测结果
+
+#### RecitationSettingsPanel
+
+背诵模式设置面板。
+
+**主要功能**:
+- 调整每日新学和复习单词数量
 
 ---
 
