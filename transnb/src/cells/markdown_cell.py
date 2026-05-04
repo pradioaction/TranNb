@@ -1,6 +1,6 @@
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QTextEdit, QToolButton, 
-                             QHBoxLayout, QSplitter, QLabel, QMessageBox, QSizePolicy, QFrame)
+                             QHBoxLayout, QSplitter, QLabel, QMessageBox, QSizePolicy, QFrame, QMenu, QAction)
 from PyQt5.QtCore import pyqtSignal as Signal, Qt, QSize, QTimer, QEvent
 from cells.base_cell import BaseCell
 from translation.translation_worker import TranslationWorker
@@ -38,6 +38,7 @@ class ClickableIndicatorLine(QFrame):
 
 class ClickableTextEdit(QTextEdit):
     double_clicked = Signal()
+    collect_word = Signal(str)  # 新增信号：用于发送选中的单词
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -45,10 +46,40 @@ class ClickableTextEdit(QTextEdit):
     def mouseDoubleClickEvent(self, event):
         self.double_clicked.emit()
         super().mouseDoubleClickEvent(event)
+        
+    def contextMenuEvent(self, event):
+        """右键菜单事件"""
+        # 获取选中的文本
+        selected_text = self.textCursor().selectedText().strip()
+        
+        # 创建右键菜单
+        menu = QMenu(self)
+        
+        # 添加标准的编辑菜单项
+        copy_action = QAction("复制", self)
+        copy_action.triggered.connect(self.copy)
+        copy_action.setEnabled(selected_text != "")
+        menu.addAction(copy_action)
+        
+        paste_action = QAction("粘贴", self)
+        paste_action.triggered.connect(self.paste)
+        menu.addAction(paste_action)
+        
+        menu.addSeparator()
+        
+        # 添加收藏单词菜单项
+        if selected_text:
+            collect_action = QAction("收藏单词", self)
+            collect_action.triggered.connect(lambda: self.collect_word.emit(selected_text))
+            menu.addAction(collect_action)
+        
+        # 显示菜单
+        menu.exec_(event.globalPos())
 
 class MarkdownEditor(QWidget):
     content_changed = Signal()
     needs_height_update = Signal()
+    collect_word = Signal(str)  # 新增信号：用于传递选中的单词
     
     def __init__(self):
         super().__init__()
@@ -70,6 +101,7 @@ class MarkdownEditor(QWidget):
         self.editor.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.editor.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.editor.double_clicked.connect(self.toggle_mode)
+        self.editor.collect_word.connect(self.collect_word.emit)  # 转发信号
         
         self.reading = ClickableTextEdit()
         self.reading.setReadOnly(True)
@@ -80,6 +112,7 @@ class MarkdownEditor(QWidget):
         self.reading.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.reading.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.reading.double_clicked.connect(self.toggle_mode)
+        self.reading.collect_word.connect(self.collect_word.emit)  # 转发信号
         
         layout.addWidget(self.editor)
         layout.addWidget(self.reading)
@@ -153,6 +186,8 @@ class MarkdownEditor(QWidget):
             self.reading.setStyleSheet(f"border: 1px solid {theme['output_border']}; padding: 10px; background-color: {theme['markdown_background']}; color: {theme['foreground']};")
 
 class MarkdownCell(BaseCell):
+    collect_word = Signal(str)  # 新增信号：用于传递选中的单词
+    
     def __init__(self):
         super().__init__()
         # 防抖定时器
@@ -229,6 +264,7 @@ class MarkdownCell(BaseCell):
         self.input_editor = MarkdownEditor()
         self.input_editor.switch_to_reading_mode()
         self.input_editor.needs_height_update.connect(self._on_needs_height_update)
+        self.input_editor.collect_word.connect(self.collect_word.emit)  # 连接收藏单词信号
         input_layout.addWidget(self.input_editor)
         
         # 原文折叠时的省略号标签
@@ -267,6 +303,7 @@ class MarkdownCell(BaseCell):
         self.output_editor = MarkdownEditor()
         self.output_editor.switch_to_reading_mode()
         self.output_editor.needs_height_update.connect(self._on_needs_height_update)
+        self.output_editor.collect_word.connect(self.collect_word.emit)  # 连接收藏单词信号
         output_layout.addWidget(self.output_editor)
         
         # 翻译折叠时的省略号标签

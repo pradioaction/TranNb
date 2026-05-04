@@ -1,0 +1,158 @@
+{
+  "roots": [
+    {
+      "model": {
+        "cell_id": "8fbf9643-ae1b-4b96-99f0-929d9cd75530",
+        "parent_id": null,
+        "order": 0,
+        "source_content": "这是第一个段落。这是一个比较长的段落，用于演示单元格的功能。",
+        "translation_content": "",
+        "is_collapsed": false,
+        "is_source_collapsed": false,
+        "is_translation_collapsed": false,
+        "is_selected": false,
+        "indent_level": 0,
+        "metadata": {},
+        "version": 0
+      },
+      "children": [
+        {
+          "model": {
+            "cell_id": "c0ba1233-0d20-4cfd-8e7d-06e95cbbcca4",
+            "parent_id": "8fbf9643-ae1b-4b96-99f0-929d9cd75530",
+            "order": 0,
+            "source_content": "这是第一个句子。",
+            "translation_content": "",
+            "is_collapsed": false,
+            "is_source_collapsed": false,
+            "is_translation_collapsed": false,
+            "is_selected": false,
+            "indent_level": 1,
+            "metadata": {},
+            "version": 0
+          },
+          "children": []
+        },
+        {
+          "model": {
+            "cell_id": "d3aebfeb-24eb-4a09-b84f-45bc5d206e6c",
+            "parent_id": "8fbf9643-ae1b-4b96-99f0-929d9cd75530",
+            "order": 1,
+            "source_content": "这是第二个句子。",
+            "translation_content": "",
+            "is_collapsed": false,
+            "is_source_collapsed": false,
+            "is_translation_collapsed": false,
+            "is_selected": false,
+            "indent_level": 1,
+            "metadata": {},
+            "version": 1
+          },
+          "children": []
+        },
+        {
+          "model": {
+            "cell_id": "bf3bc837-3d46-438f-9eb4-0fb59e81bf70",
+            "parent_id": "8fbf9643-ae1b-4b96-99f0-929d9cd75530",
+            "order": 2,
+            "source_content": "这是第三个句子。",
+            "translation_content": "(Translation)\n这是第三个句子。",
+            "is_collapsed": false,
+            "is_source_collapsed": false,
+            "is_translation_collapsed": false,
+            "is_selected": false,
+            "indent_level": 1,
+            "metadata": {},
+            "version": 2
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "model": {
+        "cell_id": "89c4e8a5-cb03-402b-928f-2eb87786fc81",
+        "parent_id": null,
+        "order": 1,
+        "source_content": "这是第二个段落。",
+        "translation_content": "",
+        "is_collapsed": false,
+        "is_source_collapsed": false,
+        "is_translation_collapsed": false,
+        "is_selected": false,
+        "indent_level": 0,
+        "metadata": {},
+        "version": 1
+      },
+      "children": []
+    },
+    {
+      "model": {
+        "cell_id": "69526211-218c-4eb6-bcf8-93e99f5767a2",
+        "parent_id": null,
+        "order": 2,
+        "source_content": "新单元格",
+        "translation_content": "",
+        "is_collapsed": false,
+        "is_source_collapsed": false,
+        "is_translation_collapsed": false,
+        "is_selected": false,
+        "indent_level": 0,
+        "metadata": {},
+        "version": 1
+      },
+      "children": []
+    },
+    {
+      "model": {
+        "cell_id": "2b644eb1-5d60-488d-be35-9634b06a98e4",
+        "parent_id": null,
+        "order": 3,
+        "source_content": "新单元格",
+        "translation_content": "",
+        "is_collapsed": false,
+        "is_source_collapsed": false,
+        "is_translation_collapsed": false,
+        "is_selected": false,
+        "indent_level": 0,
+        "metadata": {},
+        "version": 1
+      },
+      "children": []
+    },
+    {
+      "model": {
+        "cell_id": "c81da396-051c-441b-bd80-feb7c9f5e55e",
+        "parent_id": null,
+        "order": 4,
+        "source_content": "新单元格",
+        "translation_content": "",
+        "is_collapsed": false,
+        "is_source_collapsed": false,
+        "is_translation_collapsed": false,
+        "is_selected": false,
+        "indent_level": 0,
+        "metadata": {},
+        "version": 1
+      },
+      "children": []
+    },
+    {
+      "model": {
+        "cell_id": "e731e8ce-5bf3-4ca8-8a71-8a55e48ed200",
+        "parent_id": null,
+        "order": 5,
+        "source_content": "新单元格",
+        "translation_content": "",
+        "is_collapsed": false,
+        "is_source_collapsed": false,
+        "is_translation_collapsed": false,
+        "is_selected": false,
+        "indent_level": 0,
+        "metadata": {},
+        "version": 1
+      },
+      "children": []
+    }
+  ]
+}

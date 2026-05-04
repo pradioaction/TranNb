@@ -11,7 +11,7 @@ class BaseCell(QWidget):
     
     def __init__(self):
         super().__init__()
-        self.is_selected = False
+        self.is_selected = True
         self.theme = None
         self.min_height = 150
         self.max_height = 3000
@@ -75,6 +75,9 @@ class BaseCell(QWidget):
         self.main_layout.addWidget(self.content_area, 1)
         
         self.set_selected(False)
+
+        # 确保 widget 本身背景透明
+        self.setStyleSheet("background-color: transparent;")
         
     def on_translate_clicked(self):
         self.translate_requested.emit(self)
@@ -89,6 +92,10 @@ class BaseCell(QWidget):
         self.move_down_requested.emit(self)
         
     def set_selected(self, selected):
+        '''设置单元格是否选中'''
+        if self.is_selected == selected:
+            return
+        
         self.is_selected = selected
         # 只对 content_area 设置背景色，保持 gutter 区域透明（漂浮效果）
         if self.theme:
@@ -101,8 +108,6 @@ class BaseCell(QWidget):
                 self.content_area.setStyleSheet("background-color: #e8f4fd;")
             else:
                 self.content_area.setStyleSheet("background-color: white;")
-        # 确保 widget 本身背景透明
-        self.setStyleSheet("background-color: transparent;")
             
     def apply_theme(self, theme):
         self.theme = theme
@@ -113,7 +118,13 @@ class BaseCell(QWidget):
         self.set_selected(self.is_selected)
             
     def mousePressEvent(self, event):
-        self.selected.emit(self)
+        # 传递Shift键状态给CellManager
+        # 最最简单直接的方法！
+        from PyQt5.QtWidgets import QApplication
+        # 使用应用程序级别的键盘状态检测
+        shift_pressed = bool(QApplication.queryKeyboardModifiers() & Qt.ShiftModifier)
+        print(f"[DEBUG BaseCell] shift_pressed: {shift_pressed}")
+        self.selected.emit((self, shift_pressed))
         super().mousePressEvent(event)
         
     def adjust_height(self):

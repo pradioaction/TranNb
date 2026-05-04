@@ -785,7 +785,9 @@ class RecitationMainPage(QWidget):
             QMessageBox.warning(self, "提示", "请至少选择一个单词！")
             return
         
-        self._start_study_batch(selected_new)
+        #NOTE: 阅读文章后并不需要记录未已经学习，需要用户自行去检测不然会导致学习记录不准确
+        # self._start_study_batch(selected_new)
+
         self.generate_article_requested.emit(
             selected_new, selected_review
         )

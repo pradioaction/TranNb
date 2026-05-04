@@ -136,34 +136,26 @@ class StudyService:
     
     def get_today_words(self, book_id: int, force_refresh: bool = False) -> Tuple[List[Word], List[Word]]:
         """
-        获取今日学习和复习单词
-        
-        Args:
-            book_id: 词书ID
-            force_refresh: 是否强制刷新
-        
-        Returns:
-            (new_words, review_words) 单词列表元组
+            获取今日学习和复习单词
+            Args:
+                book_id: 词书ID
+                force_refresh: 是否强制刷新
+            
+            Returns:
+                (new_words, review_words) 单词列表元组
         """
         today_key = self._get_today_key(book_id)
-        daily_new = self.get_daily_new_words()
-        daily_review = self.get_daily_review_words()
-        
-        # 检查是否需要刷新：强制刷新 或 不是同一天 或 没有记录 或 数量设置改变了
-        need_refresh = force_refresh or not self._is_same_day() or today_key not in self._config
-        
-        # 如果保存了记录，还要检查数量设置是否改变
-        if not need_refresh and today_key in self._config:
-            saved_data = self._config[today_key]
-            saved_new_count = len(saved_data.get('new_words', []))
-            saved_review_count = len(saved_data.get('review_words', []))
-            
-            # 如果数量设置改变了，强制刷新
-            if saved_new_count != daily_new or saved_review_count != daily_review:
-                need_refresh = True
-        
+        # ==============================================
+        # 同一天内 **永远不自动刷新**，只有 force_refresh=True 才会重新生成
+        # ==============================================
+        need_refresh = force_refresh  # 只有手动强制才刷新
+
+        # 只有【今天没有任何记录】的时候，才需要第一次生成
+        if today_key not in self._config:
+            need_refresh = True
+
         if not need_refresh:
-            # 使用保存的记录
+            # 使用保存的记录（同一天内永远走这里，不会变）
             saved_data = self._config[today_key]
             new_word_ids = saved_data.get('new_words', [])
             review_word_ids = saved_data.get('review_words', [])
@@ -172,10 +164,17 @@ class StudyService:
             new_words = [self.dal.get_word_by_id(wid) for wid in new_word_ids if self.dal.get_word_by_id(wid)]
             review_words = [self.dal.get_word_by_id(wid) for wid in review_word_ids if self.dal.get_word_by_id(wid)]
             
-            # 如果单词还在，返回它们
-            if new_words or review_words:
-                return new_words, review_words
+            # 只要有数据就返回，保证一致
+            return new_words, review_words
         
+        # ==============================================
+        # 只有两种情况会走到这里：
+        # 1. 第一次打开（今天还没生成单词）
+        # 2. 用户手动触发了 force_refresh=True
+        # ==============================================
+        daily_new = self.get_daily_new_words()
+        daily_review = self.get_daily_review_words()
+
         # 需要刷新：获取新单词并保存
         new_words = self.get_study_words(book_id, daily_new)
         review_words = self.get_review_words(book_id, daily_review)

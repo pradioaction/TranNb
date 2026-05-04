@@ -2,18 +2,21 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QMenuBar, QToolBar, QStatusBar, QScrollArea,
     QAction, QFileDialog, QMessageBox, QLabel,
-    QSplitter, QFrame, QTreeView, QStackedWidget, QInputDialog, QProgressDialog
+    QSplitter, QFrame, QTreeView, QStackedWidget, QInputDialog, QProgressDialog, QApplication, QDialog
 )
 from PyQt5.QtGui import QIcon, QKeySequence
 from PyQt5.QtCore import Qt, QTimer, QDir, QSize, QThread, pyqtSignal as Signal
 import os
 import asyncio
+import logging
+logger = logging.getLogger(__name__)
 from cells.cell_manager import CellManager
 from cells.markdown_cell import MarkdownCell
 from utils.theme_manager import ThemeManager
 from settingmanager.settings_manager import SettingsManager
 from components.settings_dialog import SettingsDialog
 from components.welcome_page import WelcomePage
+from components.text_editor_dialog import TextEditorDialog
 from translation.translation_service import TranslationService
 from workspace.workspace_manager import WorkspaceManager
 from workspace.filtered_file_model import FilteredFileModel
@@ -131,6 +134,7 @@ class MainWindow(QMainWindow):
         """初始化背诵模式相关"""
         self.recitation_path_manager = RecitationPathManager()
         self.recitation_db_manager = RecitationDatabaseManager(self.recitation_path_manager)
+        # 注意：此时还没设置工作区，数据库会在设置工作区后初始化
         self.recitation_dal = RecitationDAL(self.recitation_db_manager)
         self.recitation_book_service = BookService(self.recitation_dal, self.recitation_path_manager)
         self.recitation_study_service = StudyService(self.recitation_dal, self.recitation_path_manager)
@@ -139,6 +143,15 @@ class MainWindow(QMainWindow):
         self._current_new_words = []
         self._current_review_words = []
         self._current_book_id = None
+    
+    def _refresh_book_counts(self):
+        """刷新所有词书数量（同步历史数据）"""
+        try:
+            if self.recitation_dal:
+                self.recitation_dal.refresh_all_book_counts()
+                logger.info("词书数量同步完成")
+        except Exception as e:
+            logger.error(f"同步词书数量失败: {e}", exc_info=True)
         
     def init_ui(self):
         central_widget = QWidget()
@@ -260,7 +273,7 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.splitter)
         
         # 初始化 CellManager
-        self.cell_manager = CellManager(self.cells_layout, self.translation_service)
+        self.cell_manager = CellManager(self.cells_layout, self.translation_service, self.recitation_dal)
         self.cell_manager.set_settings_manager(self.settings_manager)
         self.cell_manager.content_changed.connect(self._on_cell_content_changed)
         self.file_service.set_cell_manager(self.cell_manager)
@@ -288,6 +301,11 @@ class MainWindow(QMainWindow):
         self.import_text_action.setShortcut(QKeySequence("Ctrl+I"))
         self.import_text_action.triggered.connect(self.import_text)
         file_menu.addAction(self.import_text_action)
+        
+        self.import_from_clipboard_action = QAction("从粘贴板导入", self)
+        self.import_from_clipboard_action.setShortcut(QKeySequence("Ctrl+Shift+V"))
+        self.import_from_clipboard_action.triggered.connect(self.import_from_clipboard)
+        file_menu.addAction(self.import_from_clipboard_action)
         
         self.save_action = QAction("保存", self)
         self.save_action.setShortcut(QKeySequence("Ctrl+S"))
@@ -334,6 +352,33 @@ class MainWindow(QMainWindow):
         self.delete_action.setShortcut(QKeySequence("Delete"))
         self.delete_action.triggered.connect(self.delete_selected_cell)
         edit_menu.addAction(self.delete_action)
+        
+        edit_menu.addSeparator()
+        
+        # 折叠/展开相关操作
+        collapse_menu = edit_menu.addMenu("折叠/展开")
+        
+        self.toggle_input_collapse_all_action = QAction("全部折叠/展开原文", self)
+        self.toggle_input_collapse_all_action.setShortcut(QKeySequence("Ctrl+Shift+Q"))
+        self.toggle_input_collapse_all_action.triggered.connect(self.toggle_input_collapse_all)
+        collapse_menu.addAction(self.toggle_input_collapse_all_action)
+        
+        self.toggle_output_collapse_all_action = QAction("全部折叠/展开结果", self)
+        self.toggle_output_collapse_all_action.setShortcut(QKeySequence("Ctrl+Shift+W"))
+        self.toggle_output_collapse_all_action.triggered.connect(self.toggle_output_collapse_all)
+        collapse_menu.addAction(self.toggle_output_collapse_all_action)
+        
+        collapse_menu.addSeparator()
+        
+        self.toggle_input_collapse_selected_action = QAction("选中折叠/展开原文", self)
+        self.toggle_input_collapse_selected_action.setShortcut(QKeySequence("Ctrl+Q"))
+        self.toggle_input_collapse_selected_action.triggered.connect(self.toggle_input_collapse_selected)
+        collapse_menu.addAction(self.toggle_input_collapse_selected_action)
+        
+        self.toggle_output_collapse_selected_action = QAction("选中折叠/展开结果", self)
+        self.toggle_output_collapse_selected_action.setShortcut(QKeySequence("Ctrl+W"))
+        self.toggle_output_collapse_selected_action.triggered.connect(self.toggle_output_collapse_selected)
+        collapse_menu.addAction(self.toggle_output_collapse_selected_action)
         
         view_menu = menubar.addMenu("查看")
         self.light_theme_action = QAction("浅色主题", self, checkable=True)
@@ -429,6 +474,90 @@ class MainWindow(QMainWindow):
         # 标记为已修改
         if self.file_service.is_file_open():
             self.file_service.set_modified(True)
+    
+    # 折叠/展开相关槽函数
+    def toggle_input_collapse_all(self):
+        self.cell_manager.toggle_input_collapse_all()
+    
+    def toggle_output_collapse_all(self):
+        self.cell_manager.toggle_output_collapse_all()
+    
+    def toggle_input_collapse_selected(self):
+        self.cell_manager.toggle_input_collapse_selected()
+    
+    def toggle_output_collapse_selected(self):
+        self.cell_manager.toggle_output_collapse_selected()
+    
+    # 键盘事件处理
+    def keyPressEvent(self, event):
+        key = event.key()
+        modifiers = event.modifiers()
+        
+        # 只在编辑器页面处理
+        if self.stacked_widget.currentIndex() == self.PAGE_EDITOR:
+            # Up 键 - 选择上一个单元格（不阻止事件）
+            if not modifiers and key == Qt.Key_Up:
+                if self.cell_manager.selected_index > 0:
+                    new_index = self.cell_manager.selected_index - 1
+                    self.cell_manager.select_cell(new_index)
+            
+            # Down 键 - 选择下一个单元格（不阻止事件）
+            if not modifiers and key == Qt.Key_Down:
+                if self.cell_manager.selected_index < len(self.cell_manager.cells) - 1:
+                    new_index = self.cell_manager.selected_index + 1
+                    self.cell_manager.select_cell(new_index)
+            
+            # Shift+Up 多选（不阻止事件）
+            if modifiers & Qt.ShiftModifier and key == Qt.Key_Up:
+                if self.cell_manager.selected_index > 0:
+                    new_index = self.cell_manager.selected_index - 1
+                    # 检查是否有已选择的范围
+                    if self.cell_manager.selected_indices:
+                        # 从已选择的基础上扩展
+                        from_index = self.cell_manager.selected_index
+                        self.cell_manager.select_cell_range(from_index, new_index)
+                    else:
+                        # 选择当前和上面的
+                        self.cell_manager.select_cell_range(new_index, self.cell_manager.selected_index)
+            
+            # Shift+Down 多选（不阻止事件）
+            if modifiers & Qt.ShiftModifier and key == Qt.Key_Down:
+                if self.cell_manager.selected_index < len(self.cell_manager.cells) - 1:
+                    new_index = self.cell_manager.selected_index + 1
+                    # 检查是否有已选择的范围
+                    if self.cell_manager.selected_indices:
+                        # 从已选择的基础上扩展
+                        from_index = self.cell_manager.selected_index
+                        self.cell_manager.select_cell_range(from_index, new_index)
+                    else:
+                        # 选择当前和下面的
+                        self.cell_manager.select_cell_range(self.cell_manager.selected_index, new_index)
+            
+            # Ctrl+Q 折叠选中原文
+            if modifiers & Qt.ControlModifier and key == Qt.Key_Q:
+                self.toggle_input_collapse_selected()
+                return
+            
+            # Ctrl+W 折叠选中结果
+            if modifiers & Qt.ControlModifier and key == Qt.Key_W:
+                self.toggle_output_collapse_selected()
+                return
+            
+            # Ctrl+Shift+Q 折叠全部原文
+            if (modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier 
+                and key == Qt.Key_Q):
+                self.toggle_input_collapse_all()
+                return
+            
+            # Ctrl+Shift+W 折叠全部结果
+            if (modifiers & Qt.ControlModifier and modifiers & Qt.ShiftModifier 
+                and key == Qt.Key_W):
+                self.toggle_output_collapse_all()
+                return
+        
+        # 让事件继续传递给父窗口，这样滚动功能也能正常工作
+        event.ignore()
+        super().keyPressEvent(event)
         
     def new_file(self):
         """新建文件"""
@@ -505,6 +634,43 @@ class MainWindow(QMainWindow):
         
         # 调用 file_service.create_file_with_content 创建文件并导入内容
         self.file_service.create_file_with_content(filename, content)
+    
+    def import_from_clipboard(self):
+        """从粘贴板导入文本"""
+        # 检查是否有未保存的更改
+        if not self._check_unsaved_changes():
+            return
+            
+        # 检查是否配置了工作区
+        if not self.workspace_manager.get_workspace():
+            self._select_workspace()
+            if not self.workspace_manager.get_workspace():
+                return
+        
+        # 获取粘贴板文本
+        clipboard = QApplication.clipboard()
+        clipboard_text = clipboard.text()
+        
+        if not clipboard_text:
+            QMessageBox.warning(self, "提示", "粘贴板中没有文本内容")
+            return
+        
+        # 打开文本编辑器对话框
+        dialog = TextEditorDialog(self)
+        dialog.set_text(clipboard_text)
+        
+        if dialog.exec_() == QDialog.Accepted:
+            edited_text = dialog.edited_text
+            if not edited_text:
+                return
+            
+            # 弹出对话框输入文件名
+            filename, ok = QInputDialog.getText(self, "新建文件", "请输入文件名:")
+            if not ok or not filename:
+                return
+            
+            # 调用 file_service.create_file_with_content 创建文件并导入内容
+            self.file_service.create_file_with_content(filename, edited_text)
 
     def _set_file_browser_path(self, path):
         """设置文件浏览器路径"""
@@ -533,9 +699,18 @@ class MainWindow(QMainWindow):
                 self.recitation_path_manager.set_workspace(workspace)
                 # 重新初始化数据库连接
                 self.recitation_db_manager = RecitationDatabaseManager(self.recitation_path_manager)
+                self.recitation_db_manager.initialize()
                 self.recitation_dal = RecitationDAL(self.recitation_db_manager)
                 self.recitation_book_service = BookService(self.recitation_dal, self.recitation_path_manager)
                 self.recitation_study_service = StudyService(self.recitation_dal, self.recitation_path_manager)
+                # 同步历史词书数量
+                self._refresh_book_counts()
+                # 更新 CellManager 中的数据库引用
+                if hasattr(self, 'cell_manager') and self.cell_manager:
+                    self.cell_manager.recitation_dal = self.recitation_dal
+                    if self.cell_manager.add_word_dialog:
+                        self.cell_manager.add_word_dialog.close()
+                        self.cell_manager.add_word_dialog = None
             
             # 尝试恢复上次打开的文件
             saved_file = self.settings_manager.get_current_file()
@@ -633,6 +808,7 @@ class MainWindow(QMainWindow):
         self.save_action.setEnabled(is_file_open)
         self.save_as_action.setEnabled(is_editor_page)
         self.import_text_action.setEnabled(True)
+        self.import_from_clipboard_action.setEnabled(True)
         
         # 编辑菜单（除了翻译相关）
         self.undo_action.setEnabled(is_editor_page)
@@ -642,6 +818,12 @@ class MainWindow(QMainWindow):
         self.insert_above_action.setEnabled(is_editor_page)
         self.insert_below_action.setEnabled(is_editor_page)
         self.delete_action.setEnabled(is_editor_page)
+        
+        # 折叠/展开菜单
+        self.toggle_input_collapse_all_action.setEnabled(is_editor_page)
+        self.toggle_output_collapse_all_action.setEnabled(is_editor_page)
+        self.toggle_input_collapse_selected_action.setEnabled(is_editor_page)
+        self.toggle_output_collapse_selected_action.setEnabled(is_editor_page)
     
     def _check_unsaved_changes(self):
         """检查是否有未保存的更改，返回是否继续"""
@@ -731,9 +913,13 @@ class MainWindow(QMainWindow):
             self.recitation_path_manager.set_workspace(new_path)
             # 重新初始化数据库连接
             self.recitation_db_manager = RecitationDatabaseManager(self.recitation_path_manager)
+            # 确保数据库初始化
+            self.recitation_db_manager.initialize()
             self.recitation_dal = RecitationDAL(self.recitation_db_manager)
             self.recitation_book_service = BookService(self.recitation_dal, self.recitation_path_manager)
             self.recitation_study_service = StudyService(self.recitation_dal, self.recitation_path_manager)
+            # 同步历史词书数量
+            self._refresh_book_counts()
             # 更新UI中的服务引用
             if hasattr(self, 'recitation_main_page') and self.recitation_main_page:
                 self.recitation_main_page.set_dependencies(
@@ -747,6 +933,13 @@ class MainWindow(QMainWindow):
                     self.recitation_dal,
                     self.recitation_path_manager
                 )
+            # 更新 CellManager 中的数据库引用
+            if hasattr(self, 'cell_manager') and self.cell_manager:
+                self.cell_manager.recitation_dal = self.recitation_dal
+                # 关闭旧的对话框（下次打开时会使用新的 dal）
+                if self.cell_manager.add_word_dialog:
+                    self.cell_manager.add_word_dialog.close()
+                    self.cell_manager.add_word_dialog = None
             
         # 更新窗口标题
         self._update_window_title()

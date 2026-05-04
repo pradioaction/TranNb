@@ -67,6 +67,27 @@ class RecitationDAL:
     def search_words(self, search_text: str, book_id: Optional[int] = None) -> List[Word]:
         return self.word_dal.search_words(search_text, book_id)
     
+    def search_word_exact_lower(self, word_text: str, book_id: Optional[int] = None) -> Optional[Word]:
+        """全小写精确搜索单词"""
+        return self.word_dal.search_word_exact_lower(word_text, book_id)
+    
+    def refresh_book_count(self, book_id: int) -> bool:
+        """重新同步词书数量（从 word 表实际统计）"""
+        return self.book_dal.refresh_book_count(book_id)
+    
+    def refresh_all_book_counts(self) -> bool:
+        """重新同步所有词书数量"""
+        try:
+            books = self.get_all_books()
+            success = True
+            for book in books:
+                if not self.refresh_book_count(book.id):
+                    success = False
+            return success
+        except Exception as e:
+            logger.error(f"同步所有词书数量失败: {e}", exc_info=True)
+            return False
+    
     # ==================== 学习记录相关 ====================
     def add_user_study(self, user_study: UserStudy) -> Optional[UserStudy]:
         return self.user_study_dal.add_user_study(user_study)

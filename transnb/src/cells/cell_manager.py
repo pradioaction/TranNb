@@ -1,21 +1,25 @@
 
 import json
 import os
-from PyQt5.QtWidgets import QVBoxLayout, QWidget
-from PyQt5.QtCore import pyqtSignal as Signal, QObject
+from PyQt5.QtWidgets import QVBoxLayout, QWidget, QMessageBox
+from PyQt5.QtCore import pyqtSignal as Signal, QObject, Qt
 from cells.markdown_cell import MarkdownCell
 from translation.translation_service import TranslationService
+from recitation.ui.dialogs import AddWordToBookDialog
 
 class CellManager(QObject):
     content_changed = Signal()  # 内容变化信号
     
-    def __init__(self, layout: QVBoxLayout, translation_service=None):
+    def __init__(self, layout: QVBoxLayout, translation_service=None, recitation_dal=None):
         super().__init__()
         self.layout = layout
         self.cells = []
         self.selected_index = -1
+        self.selected_indices = []  # 存储所有选中的单元格索引
         self.translation_service = translation_service
         self.settings_manager = None
+        self.recitation_dal = recitation_dal  # 新增：背诵模式的数据访问层
+        self.add_word_dialog = None  # 新增：收藏单词对话框
         
     def set_settings_manager(self, settings_manager):
         self.settings_manager = settings_manager
@@ -50,6 +54,9 @@ class CellManager(QObject):
             cell.input_editor.content_changed.connect(self._on_cell_content_changed)
         if hasattr(cell, 'output_editor'):
             cell.output_editor.content_changed.connect(self._on_cell_content_changed)
+        # 监听收藏单词信号
+        if hasattr(cell, 'collect_word'):
+            cell.collect_word.connect(self.on_collect_word)
         
     def remove_cell(self, index):
         if 0 <= index < len(self.cells):
@@ -70,15 +77,90 @@ class CellManager(QObject):
         self.selected_index = -1
         
     def select_cell(self, index):
+        print(f"[DEBUG] select_cell called - index: {index}")
         if 0 <= index < len(self.cells):
-            if self.selected_index >= 0:
-                self.cells[self.selected_index].set_selected(False)
-            self.selected_index = index
-            self.cells[index].set_selected(True)
+            # 只取消之前选中的单元格（性能优化）
+            for i in list(self.selected_indices):
+                if 0 <= i < len(self.cells):
+                    self.cells[i].set_selected(False)
+                    print(f"[DEBUG] Deselected cell {i}")
             
-    def on_cell_selected(self, cell):
+            # 清空已选索引列表
+            self.selected_indices.clear()
+            
+            # 选择新单元格
+            self.selected_index = index
+            self.selected_indices.append(index)
+            self.cells[index].set_selected(True)
+            print(f"[DEBUG] Selected cell {index}")
+    
+    def select_cell_range(self, from_index, to_index):
+        print(f"[DEBUG] select_cell_range called - from: {from_index}, to: {to_index}")
+        if 0 <= from_index < len(self.cells) and 0 <= to_index < len(self.cells):
+            # 只取消之前选中的单元格（性能优化）
+            for i in list(self.selected_indices):
+                if 0 <= i < len(self.cells):
+                    self.cells[i].set_selected(False)
+                    print(f"[DEBUG] Deselected cell {i}")
+            
+            # 清空已选索引列表
+            self.selected_indices.clear()
+            
+            # 选择范围内的所有单元格
+            start = min(from_index, to_index)
+            end = max(from_index, to_index)
+            for i in range(start, end + 1):
+                self.selected_indices.append(i)
+                self.cells[i].set_selected(True)
+                print(f"[DEBUG] Selected cell {i}")
+            
+            # 更新主要选中索引
+            self.selected_index = from_index
+            print(f"[DEBUG] select_cell_range done - selected_indices: {self.selected_indices}")
+    
+    def toggle_cell_selection(self, index):
+        if 0 <= index < len(self.cells):
+            if index in self.selected_indices:
+                # 取消选择
+                self.selected_indices.remove(index)
+                self.cells[index].set_selected(False)
+            else:
+                # 添加选择
+                self.selected_indices.append(index)
+                self.cells[index].set_selected(True)
+            
+            # 更新主要选中索引
+            if not self.selected_indices:
+                self.selected_index = -1
+            else:
+                self.selected_index = index if index in self.selected_indices else self.selected_indices[-1]
+    
+    def get_selected_cells(self):
+        return [self.cells[i] for i in self.selected_indices if 0 <= i < len(self.cells)]
+            
+    def on_cell_selected(self, data):
+        # 处理来自单元格的信号，data 可以是 (cell, shift_pressed) 或者只是 cell
+        if isinstance(data, tuple) and len(data) == 2:
+            cell, shift_pressed = data
+        else:
+            cell = data
+            shift_pressed = False
+            
         index = self.cells.index(cell)
-        self.select_cell(index)
+        
+        # print(f"[DEBUG] on_cell_selected called - index: {index}, shift_pressed: {shift_pressed}")
+        # print(f"[DEBUG] Before - selected_index: {self.selected_index}, selected_indices: {self.selected_indices}")
+        
+        if shift_pressed and self.selected_index >= 0:
+            # 如果按住Shift键并且有选中的单元格，进行范围选择
+            # print(f"[DEBUG] Doing range selection")
+            self.select_cell_range(self.selected_index, index)
+        else:
+            # 否则正常选择单个单元格
+            # print(f"[DEBUG] Doing single selection")
+            self.select_cell(index)
+        
+        # print(f"[DEBUG] After - selected_index: {self.selected_index}, selected_indices: {self.selected_indices}")
         
     def on_cell_translate_requested(self, cell):
         index = self.cells.index(cell)
@@ -97,6 +179,22 @@ class CellManager(QObject):
         index = self.cells.index(cell)
         if index < len(self.cells) - 1:
             self.move_cell(index, index + 1)
+            
+    def on_collect_word(self, word_text):
+        """处理收藏单词的事件"""
+        if not self.recitation_dal:
+            QMessageBox.warning(None, "提示", "请先选择工作区后再使用收藏功能！")
+            return
+            
+        # 创建或显示收藏单词对话框
+        if not self.add_word_dialog:
+            self.add_word_dialog = AddWordToBookDialog(self.recitation_dal)
+            self.add_word_dialog.setWindowFlags(self.add_word_dialog.windowFlags() | Qt.WindowStaysOnTopHint)
+            
+        self.add_word_dialog.set_word(word_text)
+        self.add_word_dialog.show()
+        self.add_word_dialog.raise_()
+        self.add_word_dialog.activateWindow()
             
     def move_cell(self, from_index, to_index):
         cell = self.cells[from_index]
@@ -154,6 +252,9 @@ class CellManager(QObject):
         cell.delete_requested.connect(self.on_cell_delete_requested)
         cell.move_up_requested.connect(self.on_cell_move_up)
         cell.move_down_requested.connect(self.on_cell_move_down)
+        # 连接收藏单词信号
+        if hasattr(cell, 'collect_word'):
+            cell.collect_word.connect(self.on_collect_word)
         
     def delete_selected_cell(self):
         if self.selected_index >= 0:
@@ -211,3 +312,24 @@ class CellManager(QObject):
             cell = MarkdownCell()
             cell.set_content(paragraph)
             self.add_cell(cell)
+    
+    # 折叠/展开相关方法
+    def toggle_input_collapse_all(self):
+        """折叠/展开所有单元格的原文区域"""
+        for cell in self.cells:
+            cell.toggle_input_collapse()
+    
+    def toggle_output_collapse_all(self):
+        """折叠/展开所有单元格的结果解析区域"""
+        for cell in self.cells:
+            cell.toggle_output_collapse()
+    
+    def toggle_input_collapse_selected(self):
+        """折叠/展开选中单元格的原文区域"""
+        for cell in self.get_selected_cells():
+            cell.toggle_input_collapse()
+    
+    def toggle_output_collapse_selected(self):
+        """折叠/展开选中单元格的结果解析区域"""
+        for cell in self.get_selected_cells():
+            cell.toggle_output_collapse()
