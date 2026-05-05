@@ -94,6 +94,9 @@ class CellManager(QObject):
             self.selected_index = from_index
     
     def toggle_cell_selection(self, index: int) -> None:
+        '''
+        切换指定索引的单元格的选中状态
+        '''
         if 0 <= index < len(self.cells):
             if index in self.selected_indices:
                 self.selected_indices.remove(index)
