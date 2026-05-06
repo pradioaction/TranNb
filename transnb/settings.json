@@ -1,0 +1,103 @@
+{
+    "translation": {
+        "enabled": true,
+        "current_provider": "custom_doubao-seed-1-6-flash-250828",
+        "ollama": {
+            "base_url": "http://localhost:11434",
+            "model": "qwen:7b",
+            "timeout": 54
+        },
+        "openai": {
+            "api_key_env": "OPENAI_API_KEY",
+            "base_url": "https://api.openai.com/v1",
+            "model": "gpt-3.5-turbo",
+            "timeout": 72,
+            "proxy": ""
+        }
+    },
+    "theme": "light",
+    "window": {
+        "width": 1200,
+        "height": 800
+    },
+    "prompt_templates": {
+        "translation": "请翻译{input}",
+        "analysis": "解析{input}\\n根据输入文本的长度自动切换分析深度：若输入为一句话（无句号或仅有一个完整主谓结构），则进行逐词逐句的雅思式深度分析，解析重难点单词，固定搭配，句式结构，整体翻译；若输入为一段话（含≥2个完整主谓结构），则仅提供整体翻译，不做额外解析。",
+        "scenery": "Please write an article that includes {input}"
+    },
+    "custom_models": [
+        {
+            "name": "doubao-seed-2-0-pro-260215",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-2-0-pro-260215",
+            "timeout": 60,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "name": "doubao-seed-2-0-lite-260215",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-2-0-lite-260215",
+            "timeout": 60,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "name": "doubao-seed-1-6-flash-250828",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-1-6-flash-250828",
+            "timeout": 60,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "name": "deepseek-v3-2-251201",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "deepseek-v3-2-251201",
+            "timeout": 30,
+            "proxy": "",
+            "enabled": true
+        },
+        {
+            "name": "doubao-seed-2-0-mini-260215",
+            "backend": "ark",
+            "api_key_env": "ARK_API_KEY",
+            "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
+            "model": "doubao-seed-2-0-mini-260215",
+            "timeout": 30,
+            "proxy": "",
+            "enabled": true
+        }
+    ],
+    "workspace": {
+        "current_path": "C:\\Users\\Pradio\\Downloads\\test",
+        "recent_files": [],
+        "cell_states": {},
+        "current_file": "C:\\Users\\Pradio\\Downloads\\test\\260506\\WillowbrookATow.transnb"
+    },
+    "reading": {
+        "font_size": 12
+    },
+    "env_vars": [
+        {
+            "name": "ARK_API_KEY",
+            "description": "火山方舟API密钥"
+        },
+        {
+            "name": "OPENAI_API_KEY",
+            "description": "OpenAI密钥"
+        }
+    ],
+    "recitation": {
+        "daily_new_words": 30,
+        "daily_review_words": 10
+    }
+}

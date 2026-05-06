@@ -27,6 +27,7 @@ __pycache__/
 # 其他 Trae 生成文件
 .trae.history
 .trae.state
+.settings.json
 
 # ==============================================
 # 3. 虚拟环境 & 依赖
