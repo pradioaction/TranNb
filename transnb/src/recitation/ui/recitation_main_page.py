@@ -734,7 +734,7 @@ class RecitationMainPage(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            worker = DeleteBookWorker(self._dal, self._path_manager, self._current_book.id)
+            worker = DeleteBookWorker(self._dal, self._current_book.id)
             worker.finished.connect(self._on_delete_finished)
             self._start_worker(worker, 'delete_book')
     
